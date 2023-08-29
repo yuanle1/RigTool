@@ -5,8 +5,10 @@ from PySide2.QtCore import *
 from PySide2.QtGui import *
 import maya.cmds as mc
 import block_class
+
 reload(block_class)
 from modules import maya_utilities as maya_utilities
+
 
 # 确认block属性
 def ensureBlockAttrs(block):
@@ -81,38 +83,42 @@ def ensureBlockAttrs(block):
     block_type = mc.getAttr(block + '.otherType')
     mc.setAttr(block + '.overrideEnabled', True)
     mc.setAttr(block + '.overrideRGBColors', 1)
-
+    if not mc.objExists(block + '.subdivide'):
+        mc.addAttr(block, ln='subdivide', sn='subdivide', attributeType='long', dv=0)
     if block_type == 'FK':
         if not mc.objExists(block + '.secondControl'):
             mc.addAttr(block, ln='secondControl', sn='secControl', attributeType='bool', dv=True)
-        if not mc.objExists(block + '.subdivide'):
-            mc.addAttr(block, ln='subdivide', sn='subdivide', attributeType='long', dv=2)
         if not mc.objExists(block + '.fkShape'):
-            mc.addAttr(block, ln='fkShape', sn='fkShape', attributeType='enum', enumName='FK:IK')
+            mc.addAttr(block, ln='fkShape', sn='fkShape', attributeType='enum', enumName='FK:IK:Spline:Main')
+            mc.setAttr(block + '.fkShape', 0)
         if not mc.objExists(block + '.secShape'):
-            mc.addAttr(block, ln='secShape', sn='secShape', attributeType='enum', enumName='FK:IK')
+            mc.addAttr(block, ln='secShape', sn='secShape', attributeType='enum',
+                       enumName='FKSec:IKSec:SplineSec:MainSec')
+            mc.setAttr(block + '.secShape', 0)
         mc.setAttr(block + '.overrideColorRGB', 116 / 255.0, 185 / 255.0, 255 / 255.0)
 
     elif block_type == 'IK':
         if not mc.objExists(block + '.secondControl'):
             mc.addAttr(block, ln='secondControl', sn='secControl', attributeType='bool', dv=True)
-        if not mc.objExists(block + '.subdivide'):
-            mc.addAttr(block, ln='subdivide', sn='subdivide', attributeType='long', dv=2)
         if not mc.objExists(block + '.ikShape'):
-            mc.addAttr(block, ln='ikShape', sn='ikShape', attributeType='enum', enumName='FK:IK:Spline')
+            mc.addAttr(block, ln='ikShape', sn='ikShape', attributeType='enum', enumName='FK:IK:Spline:Main')
+            mc.setAttr(block + '.ikShape', 1)
         if not mc.objExists(block + '.secShape'):
-            mc.addAttr(block, ln='secShape', sn='secShape', attributeType='enum', enumName='FKSec:IKSec:SplineSec')
+            mc.addAttr(block, ln='secShape', sn='secShape', attributeType='enum',
+                       enumName='FKSec:IKSec:SplineSec:MainSec')
+            mc.setAttr(block + '.secShape', 1)
         mc.setAttr(block + '.overrideColorRGB', 255 / 255.0, 118 / 255.0, 117 / 255.0)
 
     elif block_type == 'Spline':
         if not mc.objExists(block + '.secondControl'):
             mc.addAttr(block, ln='secondControl', sn='secControl', attributeType='bool', dv=True)
-        if not mc.objExists(block + '.subdivide'):
-            mc.addAttr(block, ln='subdivide', sn='subdivide', attributeType='long', dv=2)
         if not mc.objExists(block + '.splineShape'):
-            mc.addAttr(block, ln='splineShape', sn='splineShape', attributeType='enum', enumName='FK:IK:Spline')
+            mc.addAttr(block, ln='splineShape', sn='splineShape', attributeType='enum', enumName='FK:IK:Spline:Main')
+            mc.setAttr(block + '.splineShape', 2)
         if not mc.objExists(block + '.secShape'):
-            mc.addAttr(block, ln='secShape', sn='secShape', attributeType='enum', enumName='FKSec:IKSec:SplineSec')
+            mc.addAttr(block, ln='secShape', sn='secShape', attributeType='enum',
+                       enumName='FKSec:IKSec:SplineSec:MainSec')
+            mc.setAttr(block + '.secShape', 2)
         mc.setAttr(block + '.overrideColorRGB', 253 / 255.0, 203 / 255.0, 110 / 255.0)
 
     elif block_type == 'Hand':
@@ -139,12 +145,36 @@ def ensureBlockAttrs(block):
 def ensureAllBlockAttrs():
     if not mc.objExists('Block'):
         return
+    if not mc.objExists('Block.name'):
+        mc.addAttr('Block', ln='name', sn='n', dataType='string')
+        mc.setAttr('Block.n', 'Main', type='string')
+    if not mc.objExists('Block.mainCount'):
+        mc.addAttr('Block', ln='mainCount', attributeType='long', dv=1)
+    if not mc.objExists('Block.rootControl'):
+        mc.addAttr('Block', ln='rootControl', attributeType='bool', dv=True)
+    if not mc.objExists('Block.gravityControl'):
+        mc.addAttr('Block', ln='gravityControl', attributeType='bool', dv=True)
+
     mc.select('Block', hi=True)
     block_joints = mc.ls(sl=True, type='joint')
     for block_joint in block_joints:
         ensureBlockAttrs(block_joint)
 
+
 def ensureBlockInfo(block):
+    # mirror
+    side = block.getSide()
+    mirror = block.getMirror()
+    if not side == 'M':
+        if not mirror:
+            block.setInstance(False)
+        else:
+            if block.getParentBlock():
+                if block.getParentBlock().getSide() != 'M' and not block.getParentBlock().getInstance():
+                    block.setInstance(False)
+
+
+    # function
     function = block.getFunction()
     if function == 'IK':
         for block_child in block.getChildrenBlock():
@@ -156,12 +186,15 @@ def ensureBlockInfo(block):
                         block.setIKEndJoint(block_child_child.getJoint())
                         block.setIKSolver('IKRPSolver')
                         block.setFirstChild(block_child.getJoint())
+                        block.setFirstChildSide(['M', 'L', 'R'][mc.getAttr(block_child.getJoint() + '.side')])
 
                         block_child.setIKStartJoint(block.getJoint())
                         block_child.setIKMiddleJoint(block_child.getJoint())
                         block_child.setIKEndJoint(block_child_child.getJoint())
                         block_child.setIKSolver('IKRPSolver')
                         block_child.setFirstChild(block_child_child.getJoint())
+                        block_child.setFirstChildSide(['M', 'L', 'R'][mc.getAttr(block_child.getJoint() + '.side')])
+                        block_child.setSubdivide(block.getSubdivide())
 
                         block_child_child.setIKStartJoint(block.getJoint())
                         block_child_child.setIKMiddleJoint(block_child.getJoint())
@@ -174,20 +207,18 @@ def ensureBlockInfo(block):
         spline_end_block = iterateSpline(block, spline_child_blocks)
         spline_child_joints = [i.getJoint() for i in spline_child_blocks]
 
-
-
         if spline_child_joints and spline_end_block:
             block.setSplineStartJoint(block.getJoint())
             block.setSplineMiddleJoints(spline_child_joints)
             block.setSplineEndJoint(spline_end_block.getJoint())
             block.setIKSolver('SplineSolver')
 
-
             for spline_child_block in spline_child_blocks:
                 spline_child_block.setSplineStartJoint(block.getJoint())
                 spline_child_block.setSplineMiddleJoints(spline_child_joints)
                 spline_child_block.setSplineEndJoint(spline_end_block.getJoint())
                 spline_child_block.setIKSolver('SplineSolver')
+                spline_child_block.setSubdivide(block.getSubdivide())
 
             spline_end_block.setSplineStartJoint(block.getJoint())
             spline_end_block.setSplineMiddleJoints(spline_child_joints)
@@ -209,6 +240,7 @@ def ensureBlockInfo(block):
             fk_child_block.setFKStartJoint(block.getJoint())
             fk_child_block.setFKJoints(fk_child_joints)
             fk_child_block.setIKSolver('FK')
+            fk_child_block.setSubdivide(block.getSubdivide())
 
 def iterateSpline(block, spline_child_blocks):
     if block.getFunction() == 'Child':
@@ -218,9 +250,10 @@ def iterateSpline(block, spline_child_blocks):
             # spline_child_joints.append(block.getJoint())
             return block
         else:
-            spline_child_blocks[:] = [] # 必须这样写，不能保持直接spline_child_joints = [], 不然和传入的spline_child_joints不是一个地址
+            spline_child_blocks[:] = []  # 必须这样写，不能保持直接spline_child_joints = [], 不然和传入的spline_child_joints不是一个地址
     for block_child in block.getChildrenBlock():
         return iterateSpline(block_child, spline_child_blocks)
+
 
 def iterateFK(block, fk_child_blocks):
     if block.getFunction() == 'Child':
@@ -229,8 +262,6 @@ def iterateFK(block, fk_child_blocks):
         return
     for block_child in block.getChildrenBlock():
         iterateFK(block_child, fk_child_blocks)
-
-
 
 
 def ensureAllBlockInfo(blocks):
@@ -259,50 +290,54 @@ def blockInstance(block_joint):
 
     if function == 'FK':
         secondControl = mc.getAttr(block_joint + '.secondControl')
-        subdivide = mc.getAttr(block_joint + '.subdivide')
         fkShape = mc.getAttr(block_joint + '.fkShape')
         secShape = mc.getAttr(block_joint + '.secShape')
-        block = block_class.FKBlock(joint=joint, name=name, function=function, side=side, mirror=mirror, orientX=orientX,
+        block = block_class.FKBlock(joint=joint, name=name, function=function, side=side, mirror=mirror,
+                                    orientX=orientX,
                                     orientY=orientY, worldX=worldX, worldY=worldY, parent=parent, children=children,
-                                    secondControl=secondControl, subdivide=subdivide, fkShape=fkShape,
-                                    secShape=secShape)
+                                    secondControl=secondControl, fkShape=fkShape, secShape=secShape)
+
     elif function == 'IK':
         secondControl = mc.getAttr(block_joint + '.secondControl')
-        subdivide = mc.getAttr(block_joint + '.subdivide')
         ikShape = mc.getAttr(block_joint + '.ikShape')
         secShape = mc.getAttr(block_joint + '.secShape')
-        block = block_class.IKBlock(joint=joint, name=name, function=function, side=side, mirror=mirror, orientX=orientX,
+        block = block_class.IKBlock(joint=joint, name=name, function=function, side=side, mirror=mirror,
+                                    orientX=orientX,
                                     orientY=orientY, worldX=worldX, worldY=worldY, parent=parent, children=children,
-                                    secondControl=secondControl, subdivide=subdivide, ikShape=ikShape,
-                                    secShape=secShape)
+                                    secondControl=secondControl, ikShape=ikShape, secShape=secShape)
 
     elif function == 'Spline':
         secondControl = mc.getAttr(block_joint + '.secondControl')
-        subdivide = mc.getAttr(block_joint + '.subdivide')
         splineShape = mc.getAttr(block_joint + '.splineShape')
         secShape = mc.getAttr(block_joint + '.secShape')
-        block = block_class.SplineBlock(joint=joint, name=name, function=function, side=side, mirror=mirror, orientX=orientX,
-                                    orientY=orientY, worldX=worldX, worldY=worldY, parent=parent, children=children,
-                                    secondControl=secondControl, subdivide=subdivide, splineShape=splineShape,
-                                    secShape=secShape, )
+        block = block_class.SplineBlock(joint=joint, name=name, function=function, side=side, mirror=mirror,
+                                        orientX=orientX,
+                                        orientY=orientY, worldX=worldX, worldY=worldY, parent=parent, children=children,
+                                        secondControl=secondControl, splineShape=splineShape, secShape=secShape)
 
     elif function == 'End':
-        block = block_class.EndBlock(joint=joint, name=name, function=function, side=side, mirror=mirror, orientX=orientX,
-                                    orientY=orientY, worldX=worldX, worldY=worldY, parent=parent, children=children)
+        block = block_class.EndBlock(joint=joint, name=name, function=function, side=side, mirror=mirror,
+                                     orientX=orientX,
+                                     orientY=orientY, worldX=worldX, worldY=worldY, parent=parent, children=children)
 
     elif function == 'Child':
-        block = block_class.ChildBlock(joint=joint, name=name, function=function, side=side, mirror=mirror, orientX=orientX,
-                                    orientY=orientY, worldX=worldX, worldY=worldY, parent=parent, children=children)
+        block = block_class.ChildBlock(joint=joint, name=name, function=function, side=side, mirror=mirror,
+                                       orientX=orientX,
+                                       orientY=orientY, worldX=worldX, worldY=worldY, parent=parent, children=children)
 
     elif function == 'Hand':
-        block = block_class.ChildBlock(joint=joint, name=name, function=function, side=side, mirror=mirror, orientX=orientX,
-                                    orientY=orientY, worldX=worldX, worldY=worldY, parent=parent, children=children)
+        block = block_class.ChildBlock(joint=joint, name=name, function=function, side=side, mirror=mirror,
+                                       orientX=orientX,
+                                       orientY=orientY, worldX=worldX, worldY=worldY, parent=parent, children=children)
 
     elif function == 'Foot':
-        block = block_class.ChildBlock(joint=joint, name=name, function=function, side=side, mirror=mirror, orientX=orientX,
-                                    orientY=orientY, worldX=worldX, worldY=worldY, parent=parent, children=children)
-
+        block = block_class.ChildBlock(joint=joint, name=name, function=function, side=side, mirror=mirror,
+                                       orientX=orientX,
+                                       orientY=orientY, worldX=worldX, worldY=worldY, parent=parent, children=children)
+    subdivide = mc.getAttr(block_joint + '.subdivide')
+    block.setSubdivide(subdivide)
     return block
+
 
 # scale为y轴距离
 def getBlockScale():
@@ -325,6 +360,7 @@ def getBlockSide(block):
         return 'L'
     elif pos[0] < side_treshold:
         return 'R'
+
 
 def updateBlockOrient(blocks):
     with maya_utilities.Undoable():
@@ -353,7 +389,6 @@ def updateBlockOrient(blocks):
             aim_obj = ''
             aim_vector = ''
 
-
             if block_orient_x == 'Common':
                 # x轴指向次级骨骼
                 aim_obj = block_child
@@ -367,8 +402,8 @@ def updateBlockOrient(blocks):
                 aim_obj = temp_aim
                 mc.matchTransform(temp_aim, block_joint, position=True)
                 mc.select(temp_aim)
-                mc.move(1, 0, 0, temp_aim, r=True, ws=True)
-                aim_vector = block_world_x
+                mc.move(block_world_x[0], block_world_x[1], block_world_x[2], temp_aim, r=True, ws=True)
+                aim_vector = (1, 0, 0)
 
             elif block_orient_x == 'Free':
                 pass
@@ -396,7 +431,8 @@ def updateBlockOrient(blocks):
                     if block.getIKSolver() == 'IKRPSolver':
                         if block.getSide() == 'R':
                             up_vec_obj = block.getIKEndJoint()
-                            con = mc.aimConstraint(aim_obj, block_joint, aimVector=aim_vector, upVector=(0, 1, 0), worldUpType='object', worldUpObject=up_vec_obj)[0]
+                            con = mc.aimConstraint(aim_obj, block_joint, aimVector=aim_vector, upVector=(0, 1, 0),
+                                                   worldUpType='object', worldUpObject=up_vec_obj)[0]
                             mc.delete(con)
                         else:
                             if mc.objExists('tempTransform'):
@@ -408,12 +444,14 @@ def updateBlockOrient(blocks):
                                 mc.parent('tempTransform', block_joint)
                                 rot = mc.getAttr('tempTransform.r')[0]
                                 if -0.001 < rot[2] < 0.001:
-                                    mc.move(0, pos[1] / 100.0, 0, block.getIKMiddleJoint() + '.rotatePivot', os=True, r=True)
+                                    mc.move(0, pos[1] / 100.0, 0, block.getIKMiddleJoint() + '.rotatePivot', os=True,
+                                            r=True)
                                 mc.parent(block.getIKMiddleJoint(), 'Block')
                                 mc.delete('tempTransform')
 
                             up_vec_obj = block.getIKEndJoint()
-                            con = mc.aimConstraint(aim_obj, block_joint, aimVector=aim_vector, upVector=(0, -1, 0), worldUpType='object', worldUpObject=up_vec_obj)[0]
+                            con = mc.aimConstraint(aim_obj, block_joint, aimVector=aim_vector, upVector=(0, -1, 0),
+                                                   worldUpType='object', worldUpObject=up_vec_obj)[0]
                             mc.delete(con)
 
                 elif function == 'FK':
@@ -454,14 +492,16 @@ def updateBlockOrient(blocks):
                         up_obj = mc.createNode('transform', p=block_joint, n='up_obj')
                         mc.move(0, 1, 0, up_obj, r=True, os=True)
                         mc.parent(up_obj, w=True)
-                        con = mc.aimConstraint(aim_obj, block_joint, aimVector=aim_vector, upVector=(0, 1, 0), worldUpType='object', worldUpObject=up_obj)[0]
+                        con = mc.aimConstraint(aim_obj, block_joint, aimVector=aim_vector, upVector=(0, 1, 0),
+                                               worldUpType='object', worldUpObject=up_obj)[0]
                         mc.delete(con)
                         mc.delete(up_obj)
                     elif block.getSide() == 'R':
                         up_obj = mc.createNode('transform', p=block_joint, n='up_obj')
                         mc.move(0, -1, 0, up_obj, r=True, os=True)
                         mc.parent(up_obj, w=True)
-                        con = mc.aimConstraint(aim_obj, block_joint, aimVector=aim_vector, upVector=(0, -1, 0), worldUpType='object', worldUpObject=up_obj)[0]
+                        con = mc.aimConstraint(aim_obj, block_joint, aimVector=aim_vector, upVector=(0, -1, 0),
+                                               worldUpType='object', worldUpObject=up_obj)[0]
                         mc.delete(con)
                         mc.delete(up_obj)
 
@@ -492,7 +532,9 @@ def updateBlockOrient(blocks):
                 elif function == 'Child':
                     if block.getIKSolver() == 'IKRPSolver':
                         up_vec_obj = block.getIKStartJoint()
-                        con = mc.aimConstraint(aim_obj, block_joint, aimVector=aim_vector, upVector=(0, 1, 0), worldUpType='objectrotation', worldUpObject=up_vec_obj, worldUpVector=(0, 1, 0))[0]
+                        con = mc.aimConstraint(aim_obj, block_joint, aimVector=aim_vector, upVector=(0, 1, 0),
+                                               worldUpType='objectrotation', worldUpObject=up_vec_obj,
+                                               worldUpVector=(0, 1, 0))[0]
                         mc.delete(con)
                         mc.joint(block_joint, spa=True, e=True, ch=True)
                     elif block.getIKSolver() == 'SplineSolver':
@@ -500,14 +542,17 @@ def updateBlockOrient(blocks):
                             # con = mc.aimConstraint(aim_obj, block_joint, aimVector=aim_vector, upVector=(0, 1, 0), worldUpType='vector', worldUpVector=(0, 0, 1))[0]
                             # mc.delete(con)
                             up_vec_obj = block.getSplineStartJoint()
-                            con = mc.aimConstraint(aim_obj, block_joint, aimVector=aim_vector, upVector=(0, 1, 0), worldUpType='objectrotation', worldUpObject=up_vec_obj, worldUpVector=(0, 1, 0))[0]
+                            con = mc.aimConstraint(aim_obj, block_joint, aimVector=aim_vector, upVector=(0, 1, 0),
+                                                   worldUpType='objectrotation', worldUpObject=up_vec_obj,
+                                                   worldUpVector=(0, 1, 0))[0]
                             mc.delete(con)
 
                         elif block.getSide() == 'L':
                             up_obj = mc.createNode('transform', p=block_joint, n='up_obj')
                             mc.move(0, 1, 0, up_obj, r=True, os=True)
                             mc.parent(up_obj, w=True)
-                            con = mc.aimConstraint(aim_obj, block_joint, aimVector=aim_vector, upVector=(0, 1, 0), worldUpType='object', worldUpObject=up_obj)[0]
+                            con = mc.aimConstraint(aim_obj, block_joint, aimVector=aim_vector, upVector=(0, 1, 0),
+                                                   worldUpType='object', worldUpObject=up_obj)[0]
                             mc.delete(con)
                             mc.delete(up_obj)
 
@@ -535,7 +580,8 @@ def updateBlockOrient(blocks):
 
             elif block_orient_y == 'World':
                 world_up_vector = block_world_y
-                con = mc.aimConstraint(aim_obj, block_joint, worldUpType='Vector', aimVector=aim_vector, upVector=(0, 1, 0), worldUpVector=world_up_vector)
+                con = mc.aimConstraint(aim_obj, block_joint, worldUpType='Vector', aimVector=aim_vector,
+                                       upVector=(0, 1, 0), worldUpVector=world_up_vector)
                 mc.delete(con)
 
             elif block_orient_y == 'Free':
@@ -543,39 +589,26 @@ def updateBlockOrient(blocks):
             elif block_orient_y == 'Parent':
                 if block_parent:
                     up_vec_obj = block_parent
-                    con = mc.aimConstraint(aim_obj, block_joint, worldUpType='objectrotation', worldUpObject=up_vec_obj, worldUpVector=(0, 1, 0))[0]
+                    con = mc.aimConstraint(aim_obj, block_joint, worldUpType='objectrotation', worldUpObject=up_vec_obj,
+                                           worldUpVector=(0, 1, 0))[0]
                     mc.delete(con)
             mc.makeIdentity(block_joint, apply=True, t=False, r=True, s=True)
         for block in blocks:
             if block.getParent():
                 mc.parent(block.getJoint(), block.getParent())
 
-
-
         mc.delete(temp_aim)
         mc.select(clear=True)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+def lockAttrs(obj, trans, rot, scale, vis):
+    mc.setAttr(obj + '.tx', l=trans, k=not trans)
+    mc.setAttr(obj + '.ty', l=trans, k=not trans)
+    mc.setAttr(obj + '.tz', l=trans, k=not trans)
+    mc.setAttr(obj + '.rx', l=trans, k=not rot)
+    mc.setAttr(obj + '.ry', l=trans, k=not rot)
+    mc.setAttr(obj + '.rz', l=trans, k=not rot)
+    mc.setAttr(obj + '.sx', l=trans, k=not scale)
+    mc.setAttr(obj + '.sy', l=trans, k=not scale)
+    mc.setAttr(obj + '.sz', l=trans, k=not scale)
+    mc.setAttr(obj + '.visibility', l=vis, k=not vis)

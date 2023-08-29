@@ -123,8 +123,17 @@ class BlockBase(QWidget):
         self.base_layout.addWidget(self.mirror_check)
         self.base_layout.addStretch()
 
+    def setCurrentBlockMirror(self, block, mirror):
+        if block:
+            block.setMirror(mirror)
+
+    def setCurrentBlockSide(self, block, side):
+        if block:
+            block.setSide(side)
+
+
     def setFunction(self, function):
-        self.block_label.setText('Function: {}'.format(function))
+        self.function_label.setText('Function: {}'.format(function))
 
     def setJoint(self, joint):
         self.block_label.setText(joint)

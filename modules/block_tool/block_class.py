@@ -1,6 +1,9 @@
 import maya.cmds as mc
+
+
 class Block(object):
-    def __init__(self, joint='', name='Default', function='Child', side='M', mirror=True, orientX='Common', orientY='Common',
+    def __init__(self, joint='', name='Default', function='Child', side='M', mirror=True, orientX='Common',
+                 orientY='Common',
                  worldX=[1, 0, 0], worldY=[1, 0, 0], parent=None, children=[]):
         self.joint = joint
         self.name = name
@@ -30,11 +33,18 @@ class Block(object):
         self.ik_solver = None
         if children:
             self.first_child = children[0]
+            self.first_child_side = ['M', 'L', 'R'][mc.getAttr(self.first_child + '.side')]
         else:
             self.first_child = None
+            self.first_child_side = None
+        self.subdivide = 0
+        self.instance = True
 
     def getChildrenBlock(self):
         return self.childrenBlock
+
+    def setChildrenBlock(self, blocks):
+        self.childrenBlock = blocks
 
     def addChildrenBlock(self, childBlock):
         self.childrenBlock.append(childBlock)
@@ -103,7 +113,6 @@ class Block(object):
         return self.worldX
 
     def setWorldX(self, worldX):
-        print worldX
         self.worldX = worldX
         mc.setAttr(self.joint + '.worldX', worldX[0], worldX[1], worldX[2])
 
@@ -177,11 +186,29 @@ class Block(object):
     def setFirstChild(self, first_child):
         return self.first_child
 
+    def getFirstChildSide(self):
+        return self.first_child_side
+    def setFirstChildSide(self, side):
+        self.first_child_side = side
+
+    def setSubdivide(self, subdivide):
+        mc.setAttr(self.joint + '.subdivide', subdivide)
+        self.subdivide = subdivide
+
+    def getSubdivide(self):
+        return self.subdivide
+
+    def setInstance(self, instance):
+        self.instance = instance
+
+    def getInstance(self):
+        return self.instance
+
+
 class FKBlock(Block):
-    def __init__(self, secondControl=True, subdivide=2, fkShape='FK', secShape='FKSec', *args, **kwargs):
+    def __init__(self, secondControl=True, fkShape='FK', secShape='FKSec', *args, **kwargs):
         super(FKBlock, self).__init__(*args, **kwargs)
         self.secondControl = secondControl
-        self.subdivide = subdivide
         self.fkShape = fkShape
         self.secShape = secShape
 
@@ -190,12 +217,6 @@ class FKBlock(Block):
 
     def setSecondControl(self, secondControl):
         self.secondControl = secondControl
-
-    def getSubdivide(self):
-        return self.subdivide
-
-    def setSubdivide(self, subdivide):
-        self.subdivide = subdivide
 
     def getFKShape(self):
         return self.fkShape
@@ -209,19 +230,17 @@ class FKBlock(Block):
     def setSecShape(self, secShape):
         self.secShape = secShape
 
+
 class IKBlock(Block):
-    def __init__(self, secondControl=True, subdivide=2, ikShape='IK', secShape='IKSec', *args, **kwargs):
+    def __init__(self, secondControl=True, ikShape='IK', secShape='IKSec', *args, **kwargs):
         super(IKBlock, self).__init__(*args, **kwargs)
         self.secondControl = secondControl
-        self.subdivide = subdivide
         self.splineShape = ikShape
         self.secShape = secShape
 
         self.ik_start_joint = self.joint
         self.ik_middle_joint = None
         self.ik_end_joint = None
-
-
 
     def firstChild(self):
         pass
@@ -231,12 +250,6 @@ class IKBlock(Block):
 
     def setSecondControl(self, secondControl):
         self.secondControl = secondControl
-
-    def getSubdivide(self):
-        return self.subdivide
-
-    def setSubdivide(self, subdivide):
-        self.subdivide = subdivide
 
     def getIKShape(self):
         return self.ikShape
@@ -250,11 +263,11 @@ class IKBlock(Block):
     def setSecShape(self, secShape):
         self.secShape = secShape
 
+
 class SplineBlock(Block):
-    def __init__(self, secondControl=True, subdivide=2, splineShape='Spline', secShape='SplineSec', *args, **kwargs):
+    def __init__(self, secondControl=True, splineShape='Spline', secShape='SplineSec', *args, **kwargs):
         super(SplineBlock, self).__init__(*args, **kwargs)
         self.secondControl = secondControl
-        self.subdivide = subdivide
         self.splineShape = splineShape
         self.secShape = secShape
 
@@ -268,12 +281,6 @@ class SplineBlock(Block):
     def setSecondControl(self, secondControl):
         self.secondControl = secondControl
 
-    def getSubdivide(self):
-        return self.subdivide
-
-    def setSubdivide(self, subdivide):
-        self.subdivide = subdivide
-
     def getSplineShape(self):
         return self.splineShape
 
@@ -286,32 +293,84 @@ class SplineBlock(Block):
     def setSecShape(self, secShape):
         self.secShape = secShape
 
+
 class AimBlock(Block):
     pass
+
 
 class EndBlock(Block):
     def __init__(self, *args, **kwargs):
         super(EndBlock, self).__init__(*args, **kwargs)
+
 
 class ChildBlock(Block):
     def __init__(self, *args, **kwargs):
         super(ChildBlock, self).__init__(*args, **kwargs)
 
 
-
-
-
-
-
-
-
-
-
 class EyeBlock(Block):
     pass
+
 
 class HandBlock(Block):
     pass
 
+
 class FootBlock(Block):
     pass
+
+
+class Deform:
+    def __init__(self, block):
+        self.block = block
+        self.side = self.block.getSide()
+        self.block_joint = self.block.getJoint()
+        self.deform_joint = self.side + '_' + self.block_joint + '_Jnt'
+        if not self.block.getParentBlock():
+            self.deform_parent_joint = None
+        else:
+            self.deform_parent_joint = self.block.getParentBlock().getSide() + '_' + self.block.getParentBlock().getJoint() + '_Jnt'
+
+        self.subdivide = self.block.getSubdivide()
+        self.part_joints = [self.side + '_' + self.block_joint + '_Part{}'.format(i) + '_Jnt'  for i in range(1, self.subdivide + 1, 1)]
+
+        if not self.block.getFirstChild():
+            self.deform_child_joint = None
+        else:
+            self.deform_child_joint = self.block.getFirstChildSide() + '_' + self.block.getFirstChild() + '_Jnt'
+
+
+
+    def getSide(self):
+        return self.side
+
+    def getJoint(self):
+        return self.block_joint
+
+    def getDeformJoint(self):
+        return self.deform_joint
+
+    def getDeformParentJoint(self):
+        return self.deform_parent_joint
+    def getDeformChildJoint(self):
+        return self.deform_child_joint
+
+    def getSubdivide(self):
+        return self.subdivide
+
+    def getPartJoints(self):
+        return self.part_joints
+
+
+
+
+
+
+
+
+
+
+
+
+
+

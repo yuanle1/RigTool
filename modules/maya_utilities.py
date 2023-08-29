@@ -13,6 +13,9 @@ from PySide2.QtGui import *
 
 import maya.cmds as mc
 
+CURVE_FILE = '/'.join(os.path.dirname(__file__).split('\\')[:-1]) + '/Resources/curve_file.ma'
+ICONS_DIR = '/'.join(os.path.dirname(__file__).split('\\')[:-1]) + '/Resources/icons/'
+
 class IsolateViews:
     def __enter__(self):
         if not mc.ogs(q=True, pause=True):

@@ -68,8 +68,6 @@ class MSwitch(QCheckBox):
     def mousePressEvent(self, event):
         self.setChecked(not self.checked)
 
-
-
     def setChecked(self, checked, *args, **kwargs):
         super(MSwitch, self).setChecked(checked, *args, **kwargs)
         if self.animation.state() != QAbstractAnimation.Running:

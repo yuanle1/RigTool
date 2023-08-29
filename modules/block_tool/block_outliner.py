@@ -249,15 +249,6 @@ class BlockOutliner(QWidget):
         else:
             return None
 
-    def setCurrentBlockMirror(self, mirror):
-        block = self.getCurrentBlock()
-        if block:
-            block.setMirror(mirror)
-
-    def setCurrentBlockSide(self, side):
-        block = self.getCurrentBlock()
-        if block:
-            block.setSide(side)
 
     def getAllBlocks(self):
         return self.blocks

@@ -188,15 +188,15 @@ class BlockToolWin(QMainWindow):
 
     def connect(self):
         pass
-        # self.block_outliner_widget.block_tree.currentItemChanged.connect(lambda: self.block_attr_widget.refreshBlockWidget(self.block_outliner_widget.getCurrentBlock()))
-        # # self.block_attr_widget.button.clicked.connect(lambda : block_utilities.updateBlockOrient(self.block_outliner_widget.getAllBlocks()))
         # self.block_attr_widget.mirror_check.toggled.connect(lambda: self.block_outliner_widget.setCurrentBlockMirror(not self.block_attr_widget.mirror_check.isChecked()))
-        # side_list = ['M', 'L', 'R']
-        # self.block_attr_widget.side_cmobo.currentIndexChanged.connect(lambda: self.block_outliner_widget.setCurrentBlockSide(side_list[self.block_attr_widget.side_cmobo.currentIndex()]))
-
+        #
+        # self.block_attr_widget.side_cmobo.currentIndexChanged.connect(lambda: self.block_outliner_widget.setCurrentBlockSide())
+        side_list = ['M', 'L', 'R']
         self.block_outliner_widget.block_tree.currentItemChanged.connect(lambda :self.refreshBlockWidget(self.block_outliner_widget.getCurrentBlock()))
         self.block_builder_widget.reorient_button.clicked.connect(lambda :block_utilities.updateBlockOrient(self.block_outliner_widget.getAllBlocks()))
-
+        self.block_base_widget.mirror_check.toggled.connect(lambda: self.block_base_widget.setCurrentBlockMirror(self.block_outliner_widget.getCurrentBlock(), not self.block_base_widget.mirror_check.isChecked()))
+        self.block_base_widget.side_cmobo.currentIndexChanged.connect(lambda: self.block_base_widget.setCurrentBlockSide(self.block_outliner_widget.getCurrentBlock(), side_list[self.block_base_widget.side_cmobo.currentIndex()]))
+        self.block_builder_widget.build_button.clicked.connect(lambda: self.block_builder_widget.build(self.block_outliner_widget.getAllBlocks()))
     def showMessage(self):
         self.statusBar.showMessage('zhangjiaqi')
 

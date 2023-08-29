@@ -40,9 +40,10 @@ class MColorButton(QPushButton):
             self.setMinimumSize(QSize(size, size))
             self.setMaximumSize(QSize(size, size))
         self.setObjectName('color_button')
+        print color
         # {{为转义{
         self.setStyleSheet('''
-                                #color_ button
+                                #color_button
                                 {{
                                     background-color: rgb{0};
                                     border-radius: {1}px;
@@ -226,8 +227,7 @@ class MSpinBox(QSpinBox):
 
         self.editingFinished.connect(lambda: self.clearFocus())
     
-    def wheelEvent(self, event):
-        pass
+
 
     def contextMenuEvent(self, event):
         pass
@@ -276,8 +276,7 @@ class MDoubleSpinBox(QDoubleSpinBox):
 
         self.editingFinished.connect(lambda: self.clearFocus())
 
-    def wheelEvent(self, event):
-        pass
+
 
     def contextMenuEvent(self, event):
         pass

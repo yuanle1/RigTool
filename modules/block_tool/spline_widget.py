@@ -12,7 +12,6 @@ import maya_widgets.flatten_widget as flatten_widget
 reload(flatten_widget)
 
 
-
 class SplineBlock(QWidget):
     def __init__(self, parent=None, block=None):
         super(SplineBlock, self).__init__(parent)
@@ -101,6 +100,113 @@ class SplineBlock(QWidget):
         self.world_y_layout.addWidget(self.world_y_z_spin)
         self.addLine()
 
+        ## Name
+        self.name_layout = QHBoxLayout()
+        self.name_layout.setContentsMargins(8, 0, 0, 0)
+        self.main_layout.addLayout(self.name_layout)
+
+        self.name_label = flatten_widget.MPointLabel(self)
+        self.name_label.setFont(font)
+        self.name_label.setText('Name')
+        self.name_label.setFixedWidth(140)
+        self.name_layout.addWidget(self.name_label)
+
+        self.name_lineEdit = flatten_widget.MLineEdit()
+        self.name_lineEdit.setFont(font)
+        self.name_lineEdit.setText('Default')
+        self.name_lineEdit.setStyleSheet('''
+                                                    color:rgb(120, 120, 120);
+                                                    border:none;
+                                                    background-color:transparent;
+                                                    border-bottom: 1px solid rgb(120, 120, 120);
+                                                    padding-bottom: 0px;
+                                                ''')
+        self.name_layout.addWidget(self.name_lineEdit)
+        self.addLine()
+
+        ## Subdivide
+        self.subdivide_layout = QHBoxLayout()
+        self.subdivide_layout.setContentsMargins(8, 0, 0, 0)
+        self.main_layout.addLayout(self.subdivide_layout)
+
+        self.subdivide_label = flatten_widget.MPointLabel(self)
+        self.subdivide_label.setFont(font)
+        self.subdivide_label.setText('Subdivide')
+        self.subdivide_label.setFixedWidth(140)
+        self.subdivide_layout.addWidget(self.subdivide_label)
+
+        self.subdivide_spin = flatten_widget.MSpinBox()
+        self.subdivide_layout.addWidget(self.subdivide_spin)
+        self.addLine()
+
+        # ## SplineControl
+        # self.splineControl_layout = QHBoxLayout()
+        # self.splineControl_layout.setContentsMargins(8, 0, 0, 0)
+        # self.main_layout.addLayout(self.splineControl_layout)
+        #
+        # self.splineControl_label = flatten_widget.MPointLabel(self)
+        # self.splineControl_label.setFont(font)
+        # self.splineControl_label.setText('Spline Control')
+        # self.splineControl_label.setFixedWidth(140)
+        # self.splineControl_layout.addWidget(self.splineControl_label)
+        #
+        # self.splineControl_check = switch_button.MSwitch()
+        # self.splineControl_check.setChecked(True)
+        # self.splineControl_layout.addWidget(self.splineControl_check)
+        # self.splineControl_layout.addStretch()
+        # self.addLine()
+
+        ## secondControl
+        self.secControl_layout = QHBoxLayout()
+        self.secControl_layout.setContentsMargins(8, 0, 0, 0)
+        self.main_layout.addLayout(self.secControl_layout)
+
+        self.secControl_label = flatten_widget.MPointLabel(self)
+        self.secControl_label.setFont(font)
+        self.secControl_label.setText('Sec Control')
+        self.secControl_label.setFixedWidth(140)
+        self.secControl_layout.addWidget(self.secControl_label)
+
+        self.secControl_check = switch_button.MSwitch()
+        self.secControl_check.setChecked(True)
+        self.secControl_layout.addWidget(self.secControl_check)
+        self.secControl_layout.addStretch()
+        self.addLine()
+
+        ## SplineShape
+        self.splineShape_layout = QHBoxLayout()
+        self.splineShape_layout.setContentsMargins(8, 0, 0, 0)
+        self.main_layout.addLayout(self.splineShape_layout)
+
+        self.splineShape_label = flatten_widget.MPointLabel(self)
+        self.splineShape_label.setFont(font)
+        self.splineShape_label.setText('Spline Shape')
+        self.splineShape_label.setFixedWidth(140)
+        self.splineShape_layout.addWidget(self.splineShape_label)
+
+        self.splineShape_combo = flatten_widget.MComboBox(color=[59, 59, 59], border=1)
+        self.splineShape_combo.setFont(font)
+        self.splineShape_combo.addItems(['FK', 'IK', 'Spline', 'Main'])
+        self.splineShape_layout.addWidget(self.splineShape_combo)
+        self.addLine()
+
+        ## SecShape
+        self.secShape_layout = QHBoxLayout()
+        self.secShape_layout.setContentsMargins(8, 0, 0, 0)
+        self.main_layout.addLayout(self.secShape_layout)
+
+        self.secShape_label = flatten_widget.MPointLabel(self)
+        self.secShape_label.setFont(font)
+        self.secShape_label.setText('Sec Shape')
+        self.secShape_label.setFixedWidth(140)
+        self.secShape_layout.addWidget(self.secShape_label)
+
+        self.secShape_combo = flatten_widget.MComboBox(color=[59, 59, 59], border=1)
+        self.secShape_combo.setFont(font)
+        self.secShape_combo.addItems(['FKSec', 'IKSec', 'SplineSec', 'MainSec'])
+        self.secShape_layout.addWidget(self.secShape_combo)
+        self.addLine()
+
         self.updateWidget()
 
     def addLine(self):
@@ -122,6 +228,7 @@ class SplineBlock(QWidget):
         self.world_y_x_spin.valueChanged.connect(lambda: self.block.setWorldY([self.world_y_x_spin.value(), self.world_y_y_spin.value(), self.world_y_z_spin.value()]))
         self.world_y_y_spin.valueChanged.connect(lambda: self.block.setWorldY([self.world_y_x_spin.value(), self.world_y_y_spin.value(), self.world_y_z_spin.value()]))
         self.world_y_z_spin.valueChanged.connect(lambda: self.block.setWorldY([self.world_y_x_spin.value(), self.world_y_y_spin.value(), self.world_y_z_spin.value()]))
+        self.subdivide_spin.valueChanged.connect(self.block.setSubdivide)
 
     def updateWidget(self):
         block_joint = self.block.getJoint()
@@ -135,3 +242,11 @@ class SplineBlock(QWidget):
         self.world_y_x_spin.setValue(world_y[0])
         self.world_y_y_spin.setValue(world_y[1])
         self.world_y_z_spin.setValue(world_y[2])
+        name = mc.getAttr(block_joint + '.name')
+        self.name_lineEdit.setText(name)
+        subdivide = mc.getAttr(block_joint + '.subdivide')
+        self.subdivide_spin.setValue(subdivide)
+        spline_shape = mc.getAttr(block_joint + '.splineShape')
+        self.splineShape_combo.setCurrentIndex(spline_shape)
+        sec_shape = mc.getAttr(block_joint + '.secShape')
+        self.secShape_combo.setCurrentIndex(sec_shape)

@@ -1,10 +1,13 @@
 import maya.cmds as mc
 
+SHAPE_LIST = ['FK', 'IK', 'Spline', 'Finger', 'Root', 'Main']
+SEC_LIST = ['FKSec', 'IKSec', 'SplineSec']
+SIDE_LIST = ['M', 'L', 'R']
 
 class Block(object):
     def __init__(self, joint='', name='Default', function='Child', side='M', mirror=True, orientX='Common',
                  orientY='Common',
-                 worldX=[1, 0, 0], worldY=[1, 0, 0], parent=None, children=[]):
+                 worldX=[1, 0, 0], worldY=[1, 0, 0], fat=1, parent=None, children=[], subdivide=0):
         self.joint = joint
         self.name = name
         self.function = function
@@ -14,6 +17,7 @@ class Block(object):
         self.worldX = worldX
         self.orientY = orientY
         self.worldY = worldY
+        self.fat = fat
         self.parent = parent
         self.children = children
         self.parentBlock = None
@@ -37,7 +41,7 @@ class Block(object):
         else:
             self.first_child = None
             self.first_child_side = None
-        self.subdivide = 0
+        self.subdivide = subdivide
         self.instance = True
 
     def getChildrenBlock(self):
@@ -122,6 +126,14 @@ class Block(object):
     def setWorldY(self, worldY):
         self.worldY = worldY
         mc.setAttr(self.joint + '.worldY', worldY[0], worldY[1], worldY[2])
+
+    def getFat(self):
+        return self.fat
+
+    def setFat(self, fat):
+        self.fat = fat
+        mc.setAttr(self.joint + '.fat', fat)
+
 
     def getIKStartJoint(self):
         return self.ik_start_joint
@@ -216,31 +228,32 @@ class FKBlock(Block):
         return self.secondControl
 
     def setSecondControl(self, secondControl):
+        # print secondControl
+        mc.setAttr(self.joint + '.secondControl', secondControl)
         self.secondControl = secondControl
 
     def getFKShape(self):
         return self.fkShape
 
     def setFKShape(self, fkShape):
-        self.fkShape = fkShape
+        mc.setAttr(self.joint + '.fkShape', fkShape)
+        self.fkShape = SHAPE_LIST[fkShape]
 
     def getSecShape(self):
         return self.secShape
 
     def setSecShape(self, secShape):
-        self.secShape = secShape
+        mc.setAttr(self.joint + '.secShape', secShape)
+        self.secShape = SEC_LIST[secShape]
 
 
 class IKBlock(Block):
-    def __init__(self, secondControl=True, ikShape='IK', secShape='IKSec', *args, **kwargs):
+    def __init__(self, secondControl=True, ikShape='IK', fkShape='FK', secShape='IKSec', *args, **kwargs):
         super(IKBlock, self).__init__(*args, **kwargs)
         self.secondControl = secondControl
-        self.splineShape = ikShape
+        self.ikShape = ikShape
+        self.fkShape = fkShape
         self.secShape = secShape
-
-        self.ik_start_joint = self.joint
-        self.ik_middle_joint = None
-        self.ik_end_joint = None
 
     def firstChild(self):
         pass
@@ -249,19 +262,29 @@ class IKBlock(Block):
         return self.secondControl
 
     def setSecondControl(self, secondControl):
+        mc.setAttr(self.joint + '.secondControl', secondControl)
         self.secondControl = secondControl
 
     def getIKShape(self):
         return self.ikShape
 
     def setIKShape(self, ikShape):
-        self.ikShape = ikShape
+        mc.setAttr(self.joint + '.ikShape', ikShape)
+        self.ikShape = SHAPE_LIST[ikShape]
+
+    def getFKShape(self):
+        return self.fkShape
+
+    def setFKShape(self, fkShape):
+        mc.setAttr(self.joint + '.fkShape', fkShape)
+        self.fkShape = SHAPE_LIST[fkShape]
 
     def getSecShape(self):
         return self.secShape
 
     def setSecShape(self, secShape):
-        self.secShape = secShape
+        mc.setAttr(self.joint + '.secShape', secShape)
+        self.secShape = SEC_LIST[secShape]
 
 
 class SplineBlock(Block):
@@ -271,27 +294,26 @@ class SplineBlock(Block):
         self.splineShape = splineShape
         self.secShape = secShape
 
-        self.spline_start = self.joint
-        self.spline_middle = []
-        self.spline_end = None
-
     def getSecondControl(self):
         return self.secondControl
 
     def setSecondControl(self, secondControl):
+        mc.setAttr(self.joint + '.secondControl', secondControl)
         self.secondControl = secondControl
 
     def getSplineShape(self):
         return self.splineShape
 
     def setSplineShape(self, splineShape):
-        self.splineShape = splineShape
+        mc.setAttr(self.joint + '.splineShape', splineShape)
+        self.splineShape = SHAPE_LIST[splineShape]
 
     def getSecShape(self):
         return self.secShape
 
     def setSecShape(self, secShape):
-        self.secShape = secShape
+        mc.setAttr(self.joint + '.secShape', secShape)
+        self.secShape = SEC_LIST[secShape]
 
 
 class AimBlock(Block):
@@ -313,8 +335,17 @@ class EyeBlock(Block):
 
 
 class HandBlock(Block):
-    pass
+    def __init__(self, fingerShape='Finger', *args, **kwargs):
+        super(HandBlock, self).__init__(*args, **kwargs)
+        self.fingerShape = fingerShape
 
+    def getFKShape(self):
+        return self.fingerShape
+
+    def setFKShape(self, fingerShape):
+        mc.setAttr(self.joint + '.fingerShape', fingerShape)
+        self.fingerShape = SHAPE_LIST[fingerShape]
+        # self.fingerShape = fingerShape
 
 class FootBlock(Block):
     pass
@@ -339,8 +370,8 @@ class Deform:
         else:
             self.deform_child_joint = self.block.getFirstChildSide() + '_' + self.block.getFirstChild() + '_Jnt'
 
-
-
+        self.function = block.getFunction()
+        self.ik_solver = block.getIKSolver()
     def getSide(self):
         return self.side
 
@@ -361,13 +392,20 @@ class Deform:
     def getPartJoints(self):
         return self.part_joints
 
+    def getFunction(self):
+        return self.function
 
+    def getIKSolver(self):
+        return self.block.getIKSolver()
 
+    def getFat(self):
+        return self.block.getFat()
 
-
-
-
-
+    def getFKShape(self):
+        if hasattr(self.block, 'getFKShape'):
+            return self.block.getFKShape()
+        else:
+            return 'FK'
 
 
 

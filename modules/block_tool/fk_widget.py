@@ -11,7 +11,9 @@ import maya_widgets.switch_button as switch_button
 import maya_widgets.flatten_widget as flatten_widget
 reload(flatten_widget)
 
-
+SHAPE_LIST = ['FK', 'IK', 'Spline', 'Finger', 'Root', 'Main']
+SEC_LIST = ['FKSec', 'IKSec', 'SplineSec']
+SIDE_LIST = ['M', 'L', 'R']
 
 
 class FKBlock(QWidget):
@@ -141,22 +143,21 @@ class FKBlock(QWidget):
         self.subdivide_layout.addWidget(self.subdivide_spin)
         self.addLine()
 
-        # ## FKControl
-        # self.fkControl_layout = QHBoxLayout()
-        # self.fkControl_layout.setContentsMargins(8, 0, 0, 0)
-        # self.main_layout.addLayout(self.fkControl_layout)
-        #
-        # self.fkControl_label = flatten_widget.MPointLabel(self)
-        # self.fkControl_label.setFont(font)
-        # self.fkControl_label.setText('FK Control')
-        # self.fkControl_label.setFixedWidth(140)
-        # self.fkControl_layout.addWidget(self.fkControl_label)
-        #
-        # self.fkControl_check = switch_button.MSwitch()
-        # self.fkControl_check.setChecked(True)
-        # self.fkControl_layout.addWidget(self.fkControl_check)
-        # self.fkControl_layout.addStretch()
-        # self.addLine()
+        ## fat
+        self.fat_layout = QHBoxLayout()
+        self.fat_layout.setContentsMargins(8, 0, 0, 0)
+        self.main_layout.addLayout(self.fat_layout)
+
+        self.fat_label = flatten_widget.MPointLabel(self)
+        self.fat_label.setFont(font)
+        self.fat_label.setText('Fat')
+        self.fat_label.setFixedWidth(140)
+        self.fat_layout.addWidget(self.fat_label)
+
+        self.fat_spin = flatten_widget.MDoubleSpinBox()
+        self.fat_spin.setSingleStep(0.1)
+        self.fat_layout.addWidget(self.fat_spin)
+        self.addLine()
 
         ## secondControl
         self.secControl_layout = QHBoxLayout()
@@ -170,7 +171,7 @@ class FKBlock(QWidget):
         self.secControl_layout.addWidget(self.secControl_label)
 
         self.secControl_check = switch_button.MSwitch()
-        self.secControl_check.setChecked(True)
+        self.secControl_check.setChecked(False)
         self.secControl_layout.addWidget(self.secControl_check)
         self.secControl_layout.addStretch()
         self.addLine()
@@ -188,7 +189,7 @@ class FKBlock(QWidget):
 
         self.fkShape_combo = flatten_widget.MComboBox(color=[59, 59, 59], border=1)
         self.fkShape_combo.setFont(font)
-        self.fkShape_combo.addItems(['FK', 'IK', 'Spline', 'Main'])
+        self.fkShape_combo.addItems(SHAPE_LIST)
         self.fkShape_layout.addWidget(self.fkShape_combo)
         self.addLine()
 
@@ -205,7 +206,7 @@ class FKBlock(QWidget):
 
         self.secShape_combo = flatten_widget.MComboBox(color=[59, 59, 59], border=1)
         self.secShape_combo.setFont(font)
-        self.secShape_combo.addItems(['FKSec', 'IKSec', 'SplineSec', 'MainSec'])
+        self.secShape_combo.addItems(SEC_LIST)
         self.secShape_layout.addWidget(self.secShape_combo)
         self.addLine()
 
@@ -230,6 +231,10 @@ class FKBlock(QWidget):
         self.world_y_y_spin.valueChanged.connect(lambda: self.block.setWorldY([self.world_y_x_spin.value(), self.world_y_y_spin.value(), self.world_y_z_spin.value()]))
         self.world_y_z_spin.valueChanged.connect(lambda: self.block.setWorldY([self.world_y_x_spin.value(), self.world_y_y_spin.value(), self.world_y_z_spin.value()]))
         self.subdivide_spin.valueChanged.connect(self.block.setSubdivide)
+        self.fat_spin.valueChanged.connect(self.block.setFat)
+        self.secControl_check.toggled.connect(self.block.setSecondControl)
+        self.fkShape_combo.currentIndexChanged.connect(self.block.setFKShape)
+        self.secShape_combo.currentIndexChanged.connect(self.block.setSecShape)
 
     def updateWidget(self):
         block_joint = self.block.getJoint()
@@ -247,6 +252,8 @@ class FKBlock(QWidget):
         self.name_lineEdit.setText(name)
         subdivide = mc.getAttr(block_joint + '.subdivide')
         self.subdivide_spin.setValue(subdivide)
+        fat = mc.getAttr(block_joint + '.fat')
+        self.fat_spin.setValue(fat)
         sec_control = mc.getAttr(block_joint + '.secControl')
         self.secControl_check.setChecked(sec_control)
         fk_shape = mc.getAttr(block_joint + '.fkShape')

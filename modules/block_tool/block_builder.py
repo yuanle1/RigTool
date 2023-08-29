@@ -352,6 +352,7 @@ class BlockBuilder(QWidget):
         if not mc.objExists('Block'):
             return
 
+
         block_utilities.ensureAllBlockInfo(blocks)
         scale = block_utilities.getBlockScale()
 
@@ -382,25 +383,25 @@ class BlockBuilder(QWidget):
         mc.createNode('transform', n='Motion_System', p=group_rig)
         mc.createNode('transform', n='Deformation_System', p=group_rig)
         mc.createNode('transform', n='Geometry', p=group_rig)
-        # mc.setAttr('Block.v', l=False)
-        # mc.setAttr('Block.v', 0, l=True)
+        mc.setAttr('Block.v', l=False)
+        mc.setAttr('Block.v', 0, l=True)
         mc.setAttr('Geometry.inheritsTransform', 0, l=True)
 
         # 4th
         mc.createNode('transform', n='Main_System', p='Motion_System')
+        mc.createNode('transform', n='Root_System', p='Motion_System')
 
         # 创建main控制器
         main_count = mc.getAttr('Block.mainCount')
         main_name = mc.getAttr('Block.name')
-        main_ctrl = main_name + '_Ctrl'
         for i in range(main_count):
             if i == 0:
-                self.createController('Main', 'MainShape', main_ctrl, None, scale, block_joint=None)
+                main_ctrl = self.createController('Main', 'MainShape', main_name, None, scale, deform_joint=None)
                 mc.parent(main_ctrl, 'Main_System')
             else:
-                self.createController('Main', 'MainShape', '{0}{1}_Ctrl'.format(main_name, i), None,
-                                      scale * 1 + 0.2 * i, block_joint=None)
-                mc.parent('{0}{1}_Ctrl'.format(main_name, i), 'Main_System')
+                main_part_ctrl = self.createController('Main', 'MainShape', '{0}{1}'.format(main_name, i), None,
+                                      scale * 1 + 0.2 * i, deform_joint=None)
+                mc.parent(main_part_ctrl, 'Main_System')
 
         for i in range(1, main_count - 1, 1):
             mc.parent('{0}{1}_Ctrl'.format(main_name, i + 1), '{0}{1}_Ctrl'.format(main_name, i))
@@ -409,11 +410,6 @@ class BlockBuilder(QWidget):
 
         mc.addAttr(main_ctrl, ln='jointVis', k=1, at='bool', dv=1)
         mc.setAttr(main_ctrl + '.jointVis', k=False, cb=True)
-
-
-
-
-
 
         # 生成Deform
         for b in [1, -1]:
@@ -446,7 +442,7 @@ class BlockBuilder(QWidget):
                     rot = mc.xform(mirror_joint, q=True, ws=True, ro=True)
                     mc.xform(deform_joint, ws=True, ro=rot)
                     mc.delete(mirror_joint)
-
+                mc.makeIdentity(deform_joint, apply=True)
 
         # deepcopy block
         mirror_blocks = []
@@ -486,6 +482,7 @@ class BlockBuilder(QWidget):
                 mc.joint(n=part_joint)
                 mc.sets(part_joint, add='DeformSet')
                 mc.setAttr(part_joint + '.rotateOrder', mc.getAttr(deform_joint + '.rotateOrder'))
+                mc.makeIdentity(part_joint, apply=True)
 
         # parent deform_joint
         for deform in deforms:
@@ -512,18 +509,55 @@ class BlockBuilder(QWidget):
                     mc.parent(deform_child_joint, w=True)
                     mc.parent(deform_child_joint, part_joints[-1])
 
+        # create root
+        root_joint = deforms[0].getDeformJoint()
+        root_ctrl = self.createController('Root', 'RootShape', 'Root', 'M', scale, deform_joint=root_joint)
+        root_pos = root_ctrl.replace('_Ctrl', '_Pos')
+        mc.parent(root_pos, 'Root_System')
+        mc.refresh()
+        # create FK
+        for deform in deforms:
+            if not deform.getIKSolver() in ['FK', 'IKRPSolver']:
+                continue
+            deform_joint = deform.getDeformJoint()
+            name = deform.getJoint()
+            side = deform.getSide()
+            fat = deform.getFat()
+            fk_shape = deform.getFKShape()
+            fk_ctrl = self.createController('FK',  fk_shape + 'Shape', name, side, scale * fat, deform_joint)
 
 
 
-    def createController(self, type, shape, name, side, scale, block_joint=None):
+    def createController(self, function, shape, name, side, scale, deform_joint=None):
         mc.select(cl=True)
-        if type == 'Main':
-            mc.duplicate(shape, n=name)
-
-        mc.scale(scale * 3, scale * 3, scale * 3, name, r=True)
-        mc.makeIdentity(name, apply=True)
-        mc.xform(name, ws=True, t=[0, 0, 0])
-
+        if function == 'Main':
+            ctrl = name + '_Ctrl'
+            mc.duplicate(shape, n=ctrl)
+            mc.scale(scale * 6, scale * 6, scale * 6, ctrl, r=True)
+            mc.makeIdentity(ctrl, apply=True)
+            mc.xform(ctrl, ws=True, t=[0, 0, 0])
+        else:
+            if function == 'Root':
+                ctrl = side + '_' + name + '_Ctrl'
+                mc.duplicate(shape, n=ctrl)
+                mc.scale(scale * 3, scale * 3, scale * 3, ctrl, r=True)
+                mc.matchTransform(ctrl, deform_joint, position=True)
+            elif function == 'FK':
+                ctrl = side + '_' + name + '_FK_Ctrl'
+                mc.duplicate(shape, n=ctrl)
+                mc.scale(scale, scale, scale, ctrl, r=True)
+                mc.matchTransform(ctrl, deform_joint, position=True, rotation=True)
+                mc.makeIdentity(ctrl, apply=True, scale=True)
+            pos = mc.createNode('transform', n=ctrl.replace('_Ctrl', '_Pos'))
+            driven = mc.createNode('transform', n=ctrl.replace('_Ctrl', '_Driven'), p=pos)
+            connect = mc.createNode('transform', n=ctrl.replace('_Ctrl', '_Connect'), p=driven)
+            offset = mc.createNode('transform', n=ctrl.replace('_Ctrl', '_Offset'), p=connect)
+            mc.matchTransform(pos, ctrl, position=True, rotation=True)
+            mc.parent(ctrl, offset)
+            output = mc.createNode('transform', n=ctrl.replace('_Ctrl', '_Output'))
+            mc.matchTransform(output, ctrl, position=True, rotation=True)
+            mc.parent(output, ctrl)
+        return ctrl
 
 class DisplayCheck(QPushButton):
     def __init__(self, parent=None):

@@ -100,6 +100,22 @@ class EndBlock(QWidget):
         self.world_y_layout.addWidget(self.world_y_z_spin)
         self.addLine()
 
+        ## fat
+        self.fat_layout = QHBoxLayout()
+        self.fat_layout.setContentsMargins(8, 0, 0, 0)
+        self.main_layout.addLayout(self.fat_layout)
+
+        self.fat_label = flatten_widget.MPointLabel(self)
+        self.fat_label.setFont(font)
+        self.fat_label.setText('Fat')
+        self.fat_label.setFixedWidth(140)
+        self.fat_layout.addWidget(self.fat_label)
+
+        self.fat_spin = flatten_widget.MDoubleSpinBox()
+        self.fat_spin.setSingleStep(0.1)
+        self.fat_layout.addWidget(self.fat_spin)
+        self.addLine()
+
         self.updateWidget()
     def addLine(self):
         line = QFrame()
@@ -120,6 +136,7 @@ class EndBlock(QWidget):
         self.world_y_x_spin.valueChanged.connect(lambda: self.block.setWorldY([self.world_y_x_spin.value(), self.world_y_y_spin.value(), self.world_y_z_spin.value()]))
         self.world_y_y_spin.valueChanged.connect(lambda: self.block.setWorldY([self.world_y_x_spin.value(), self.world_y_y_spin.value(), self.world_y_z_spin.value()]))
         self.world_y_z_spin.valueChanged.connect(lambda: self.block.setWorldY([self.world_y_x_spin.value(), self.world_y_y_spin.value(), self.world_y_z_spin.value()]))
+        self.fat_spin.valueChanged.connect(self.block.setFat)
 
     def updateWidget(self):
         block_joint = self.block.getJoint()
@@ -133,3 +150,5 @@ class EndBlock(QWidget):
         self.world_y_x_spin.setValue(world_y[0])
         self.world_y_y_spin.setValue(world_y[1])
         self.world_y_z_spin.setValue(world_y[2])
+        fat = mc.getAttr(block_joint + '.fat')
+        self.fat_spin.setValue(fat)

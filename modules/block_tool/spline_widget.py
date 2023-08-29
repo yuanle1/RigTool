@@ -139,22 +139,21 @@ class SplineBlock(QWidget):
         self.subdivide_layout.addWidget(self.subdivide_spin)
         self.addLine()
 
-        # ## SplineControl
-        # self.splineControl_layout = QHBoxLayout()
-        # self.splineControl_layout.setContentsMargins(8, 0, 0, 0)
-        # self.main_layout.addLayout(self.splineControl_layout)
-        #
-        # self.splineControl_label = flatten_widget.MPointLabel(self)
-        # self.splineControl_label.setFont(font)
-        # self.splineControl_label.setText('Spline Control')
-        # self.splineControl_label.setFixedWidth(140)
-        # self.splineControl_layout.addWidget(self.splineControl_label)
-        #
-        # self.splineControl_check = switch_button.MSwitch()
-        # self.splineControl_check.setChecked(True)
-        # self.splineControl_layout.addWidget(self.splineControl_check)
-        # self.splineControl_layout.addStretch()
-        # self.addLine()
+        ## fat
+        self.fat_layout = QHBoxLayout()
+        self.fat_layout.setContentsMargins(8, 0, 0, 0)
+        self.main_layout.addLayout(self.fat_layout)
+
+        self.fat_label = flatten_widget.MPointLabel(self)
+        self.fat_label.setFont(font)
+        self.fat_label.setText('Fat')
+        self.fat_label.setFixedWidth(140)
+        self.fat_layout.addWidget(self.fat_label)
+
+        self.fat_spin = flatten_widget.MDoubleSpinBox()
+        self.fat_spin.setSingleStep(0.1)
+        self.fat_layout.addWidget(self.fat_spin)
+        self.addLine()
 
         ## secondControl
         self.secControl_layout = QHBoxLayout()
@@ -168,7 +167,7 @@ class SplineBlock(QWidget):
         self.secControl_layout.addWidget(self.secControl_label)
 
         self.secControl_check = switch_button.MSwitch()
-        self.secControl_check.setChecked(True)
+        self.secControl_check.setChecked(False)
         self.secControl_layout.addWidget(self.secControl_check)
         self.secControl_layout.addStretch()
         self.addLine()
@@ -229,6 +228,10 @@ class SplineBlock(QWidget):
         self.world_y_y_spin.valueChanged.connect(lambda: self.block.setWorldY([self.world_y_x_spin.value(), self.world_y_y_spin.value(), self.world_y_z_spin.value()]))
         self.world_y_z_spin.valueChanged.connect(lambda: self.block.setWorldY([self.world_y_x_spin.value(), self.world_y_y_spin.value(), self.world_y_z_spin.value()]))
         self.subdivide_spin.valueChanged.connect(self.block.setSubdivide)
+        self.fat_spin.valueChanged.connect(self.block.setFat)
+        self.secControl_check.toggled.connect(self.block.setSecondControl)
+        self.splineShape_combo.currentIndexChanged.connect(self.block.setSplineShape)
+        self.secShape_combo.currentIndexChanged.connect(self.block.setSecShape)
 
     def updateWidget(self):
         block_joint = self.block.getJoint()
@@ -246,6 +249,10 @@ class SplineBlock(QWidget):
         self.name_lineEdit.setText(name)
         subdivide = mc.getAttr(block_joint + '.subdivide')
         self.subdivide_spin.setValue(subdivide)
+        fat = mc.getAttr(block_joint + '.fat')
+        self.fat_spin.setValue(fat)
+        sec_control = mc.getAttr(block_joint + '.secControl')
+        self.secControl_check.setChecked(sec_control)
         spline_shape = mc.getAttr(block_joint + '.splineShape')
         self.splineShape_combo.setCurrentIndex(spline_shape)
         sec_shape = mc.getAttr(block_joint + '.secShape')

@@ -106,6 +106,39 @@ class HandBlock(QWidget):
         self.world_y_layout.addWidget(self.world_y_z_spin)
         self.addLine()
 
+        ## fat
+        self.fat_layout = QHBoxLayout()
+        self.fat_layout.setContentsMargins(8, 0, 0, 0)
+        self.main_layout.addLayout(self.fat_layout)
+
+        self.fat_label = flatten_widget.MPointLabel(self)
+        self.fat_label.setFont(font)
+        self.fat_label.setText('Fat')
+        self.fat_label.setFixedWidth(140)
+        self.fat_layout.addWidget(self.fat_label)
+
+        self.fat_spin = flatten_widget.MDoubleSpinBox()
+        self.fat_spin.setSingleStep(0.1)
+        self.fat_layout.addWidget(self.fat_spin)
+        self.addLine()
+
+        ## FingerShape
+        self.fingerShape_layout = QHBoxLayout()
+        self.fingerShape_layout.setContentsMargins(8, 0, 0, 0)
+        self.main_layout.addLayout(self.fingerShape_layout)
+
+        self.fingerShape_label = flatten_widget.MPointLabel(self)
+        self.fingerShape_label.setFont(font)
+        self.fingerShape_label.setText('Finger Shape')
+        self.fingerShape_label.setFixedWidth(140)
+        self.fingerShape_layout.addWidget(self.fingerShape_label)
+
+        self.fingerShape_combo = flatten_widget.MComboBox(color=[59, 59, 59], border=1)
+        self.fingerShape_combo.setFont(font)
+        self.fingerShape_combo.addItems(['FK', 'IK', 'Spline', 'Finger', 'Main'])
+        self.fingerShape_layout.addWidget(self.fingerShape_combo)
+        self.addLine()
+
         self.updateWidget()
     def addLine(self):
         line = QFrame()
@@ -126,6 +159,8 @@ class HandBlock(QWidget):
         self.world_y_x_spin.valueChanged.connect(lambda: self.block.setWorldY([self.world_y_x_spin.value(), self.world_y_y_spin.value(), self.world_y_z_spin.value()]))
         self.world_y_y_spin.valueChanged.connect(lambda: self.block.setWorldY([self.world_y_x_spin.value(), self.world_y_y_spin.value(), self.world_y_z_spin.value()]))
         self.world_y_z_spin.valueChanged.connect(lambda: self.block.setWorldY([self.world_y_x_spin.value(), self.world_y_y_spin.value(), self.world_y_z_spin.value()]))
+        self.fat_spin.valueChanged.connect(self.block.setFat)
+        self.fingerShape_combo.currentIndexChanged.connect(self.block.setFKShape)
 
     def updateWidget(self):
         block_joint = self.block.getJoint()
@@ -139,3 +174,7 @@ class HandBlock(QWidget):
         self.world_y_x_spin.setValue(world_y[0])
         self.world_y_y_spin.setValue(world_y[1])
         self.world_y_z_spin.setValue(world_y[2])
+        fat = mc.getAttr(block_joint + '.fat')
+        self.fat_spin.setValue(fat)
+        finger_shape = mc.getAttr(block_joint + '.fingerShape')
+        self.fingerShape_combo.setCurrentIndex(finger_shape)

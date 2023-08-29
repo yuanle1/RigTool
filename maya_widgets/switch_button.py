@@ -70,19 +70,21 @@ class MSwitch(QCheckBox):
 
     def setChecked(self, checked, *args, **kwargs):
         super(MSwitch, self).setChecked(checked, *args, **kwargs)
-        if self.animation.state() != QAbstractAnimation.Running:
-            if self.checked != checked:
-                self.circle.setCheced(checked)
-                if checked:
-                    self.animation.setStartValue(QPoint(4, 3))
-                    self.animation.setEndValue(QPoint(15, 3))
-                else:
-                    self.animation.setStartValue(QPoint(15, 3))
-                    self.animation.setEndValue(QPoint(4, 3))
-                self.animation.start()
-            self.checked = checked
+        # if self.animation.state() != QAbstractAnimation.Running:
+        if self.checked != checked:
+            self.circle.setCheced(checked)
+            if checked:
+                self.animation.setStartValue(QPoint(4, 3))
+                self.animation.setEndValue(QPoint(15, 3))
+            else:
+                self.animation.setStartValue(QPoint(15, 3))
+                self.animation.setEndValue(QPoint(4, 3))
+            self.animation.start()
+        self.checked = checked
     def isChecked(self):
         return self.checked
+
+
 
 
 class MComboBox(QComboBox):

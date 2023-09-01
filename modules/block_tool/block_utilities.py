@@ -12,6 +12,8 @@ from modules import maya_utilities as maya_utilities
 SHAPE_LIST = ['FK', 'IK', 'Spline', 'Finger', 'Root', 'Main']
 SEC_LIST = ['FKSec', 'IKSec', 'SplineSec']
 SIDE_LIST = ['M', 'L', 'R']
+
+
 # 确认block属性
 def ensureBlockAttrs(block):
     if not mc.objExists(block + '.name'):
@@ -54,6 +56,8 @@ def ensureBlockAttrs(block):
         mc.setAttr(block + '.worldYZ', 0.00)
     if not mc.objExists(block + '.fat'):
         mc.addAttr(block, ln='fat', attributeType='double', min=0, dv=1)
+
+
     block_type_list = [None, 'FK', 'IK', 'Spline', 'Child', 'End', 'Eye', 'Hand', 'Foot']
     joint_label = mc.getAttr(block + '.type')
     if joint_label == 18:
@@ -89,6 +93,8 @@ def ensureBlockAttrs(block):
     if not mc.objExists(block + '.subdivide'):
         mc.addAttr(block, ln='subdivide', sn='subdivide', attributeType='long', dv=0)
     if block_type == 'FK':
+        if not mc.objExists(block + '.segScaleComp'):
+            mc.addAttr(block, ln='segScaleComp', attributeType='bool', dv=True)
         if not mc.objExists(block + '.secondControl'):
             mc.addAttr(block, ln='secondControl', sn='secControl', attributeType='bool', dv=True)
         if not mc.objExists(block + '.fkShape'):
@@ -100,6 +106,8 @@ def ensureBlockAttrs(block):
         mc.setAttr(block + '.overrideColorRGB', 116 / 255.0, 185 / 255.0, 255 / 255.0)
 
     elif block_type == 'IK':
+        if not mc.objExists(block + '.segScaleComp'):
+            mc.addAttr(block, ln='segScaleComp', attributeType='bool', dv=True)
         if not mc.objExists(block + '.secondControl'):
             mc.addAttr(block, ln='secondControl', sn='secControl', attributeType='bool', dv=True)
         if not mc.objExists(block + '.ikShape'):
@@ -125,12 +133,16 @@ def ensureBlockAttrs(block):
         mc.setAttr(block + '.overrideColorRGB', 253 / 255.0, 203 / 255.0, 110 / 255.0)
 
     elif block_type == 'Hand':
+        if not mc.objExists(block + '.segScaleComp'):
+            mc.addAttr(block, ln='segScaleComp', attributeType='bool', dv=True)
         mc.setAttr(block + '.overrideColorRGB', 255 / 255.0, 118 / 255.0, 117 / 255.0)
         if not mc.objExists(block + '.fingerShape'):
             mc.addAttr(block, ln='fingerShape', sn='fingerShape', attributeType='enum', enumName=':'.join(SHAPE_LIST))
             mc.setAttr(block + '.fingerShape', 3)
 
     elif block_type == 'Foot':
+        if not mc.objExists(block + '.segScaleComp'):
+            mc.addAttr(block, ln='segScaleComp', attributeType='bool', dv=True)
         mc.setAttr(block + '.overrideColorRGB', 255 / 255.0, 118 / 255.0, 117 / 255.0)
     # elif block_type == 'Toe':
     #     mc.setAttr(block + '.overrideColorRGB', 255 / 255.0, 118 / 255.0, 117 / 255.0)
@@ -172,6 +184,7 @@ def ensureBlockInfo(block):
     # mirror
     side = block.getSide()
     mirror = block.getMirror()
+    # 父骨骼mirror子骨骼部mirror
     if not side == 'M':
         if not mirror:
             block.setInstance(False)
@@ -179,7 +192,6 @@ def ensureBlockInfo(block):
             if block.getParentBlock():
                 if block.getParentBlock().getSide() != 'M' and not block.getParentBlock().getInstance():
                     block.setInstance(False)
-
 
     # function
     function = block.getFunction()
@@ -207,13 +219,15 @@ def ensureBlockInfo(block):
                         block_child_child.setIKMiddleJoint(block_child.getJoint())
                         block_child_child.setIKEndJoint(block_child_child.getJoint())
                         block_child_child.setIKSolver('IKRPSolver')
+
+                        segScaleComp = block.getSegScaleComp()
+                        block_child.setSSCInstance(segScaleComp)
                         break
 
     elif function == 'Spline':
         spline_child_blocks = []
         spline_end_block = iterateSpline(block, spline_child_blocks)
         spline_child_joints = [i.getJoint() for i in spline_child_blocks]
-
         if spline_child_joints and spline_end_block:
             block.setSplineStartJoint(block.getJoint())
             block.setSplineMiddleJoints(spline_child_joints)
@@ -241,13 +255,26 @@ def ensureBlockInfo(block):
 
         block.setFKStartJoint(block.getJoint())
         block.setFKJoints(fk_child_joints)
+        segScaleComp = block.getSegScaleComp()
         if block.getIKSolver() != 'IKRPSolver' and block.getIKSolver() != 'SplineSolver':
             block.setIKSolver('FK')
         for fk_child_block in fk_child_blocks:
             fk_child_block.setFKStartJoint(block.getJoint())
             fk_child_block.setFKJoints(fk_child_joints)
             fk_child_block.setIKSolver('FK')
-            # fk_child_block.setSubdivide(block.getSubdivide())
+            fk_child_block.setSSCInstance(segScaleComp)
+
+        if function == 'Foot':
+            for child_block in block.getChildrenBlock():
+                if child_block.getFunction() == 'Child':
+                    for child_child_block in child_block.getChildrenBlock():
+                        if child_child_block.getFunction() == 'End':
+                            block.setIKToeJoint(child_block.getJoint())
+                            block.setIKToeEndJoint(child_child_block.getJoint())
+                            child_block.setIKToeJoint(child_block.getJoint())
+                            child_block.setIKToeEndJoint(child_child_block.getJoint())
+                            child_block.setSSCInstance(segScaleComp)
+                            break
 
 
 def iterateSpline(block, spline_child_blocks):
@@ -296,15 +323,18 @@ def blockInstance(block_joint):
     children = mc.listRelatives(block_joint, type='joint') or []
     subdivide = mc.getAttr(block_joint + '.subdivide')
     if function == 'FK':
+        segScaleComp = mc.getAttr(block_joint + '.segScaleComp')
         secondControl = mc.getAttr(block_joint + '.secondControl')
         fkShape = SHAPE_LIST[mc.getAttr(block_joint + '.fkShape')]
         secShape = SEC_LIST[mc.getAttr(block_joint + '.secShape')]
         block = block_class.FKBlock(joint=joint, name=name, function=function, side=side, mirror=mirror,
                                     orientX=orientX,
                                     orientY=orientY, worldX=worldX, worldY=worldY, parent=parent, children=children,
-                                    secondControl=secondControl, fkShape=fkShape, secShape=secShape, subdivide=subdivide, fat=fat)
+                                    secondControl=secondControl, fkShape=fkShape, secShape=secShape,
+                                    subdivide=subdivide, fat=fat, segScaleComp=segScaleComp)
 
     elif function == 'IK':
+        segScaleComp = mc.getAttr(block_joint + '.segScaleComp')
         secondControl = mc.getAttr(block_joint + '.secondControl')
         ikShape = SHAPE_LIST[mc.getAttr(block_joint + '.ikShape')]
         fkShape = SHAPE_LIST[mc.getAttr(block_joint + '.fkShape')]
@@ -312,7 +342,8 @@ def blockInstance(block_joint):
         block = block_class.IKBlock(joint=joint, name=name, function=function, side=side, mirror=mirror,
                                     orientX=orientX,
                                     orientY=orientY, worldX=worldX, worldY=worldY, parent=parent, children=children,
-                                    secondControl=secondControl, ikShape=ikShape, fkShape=fkShape, secShape=secShape, subdivide=subdivide, fat=fat)
+                                    secondControl=secondControl, ikShape=ikShape, fkShape=fkShape, secShape=secShape,
+                                    subdivide=subdivide, fat=fat, segScaleComp=segScaleComp)
 
     elif function == 'Spline':
         secondControl = mc.getAttr(block_joint + '.secondControl')
@@ -321,28 +352,35 @@ def blockInstance(block_joint):
         block = block_class.SplineBlock(joint=joint, name=name, function=function, side=side, mirror=mirror,
                                         orientX=orientX,
                                         orientY=orientY, worldX=worldX, worldY=worldY, parent=parent, children=children,
-                                        secondControl=secondControl, splineShape=splineShape, secShape=secShape, subdivide=subdivide, fat=fat)
+                                        secondControl=secondControl, splineShape=splineShape, secShape=secShape,
+                                        subdivide=subdivide, fat=fat)
 
     elif function == 'End':
         block = block_class.EndBlock(joint=joint, name=name, function=function, side=side, mirror=mirror,
                                      orientX=orientX,
-                                     orientY=orientY, worldX=worldX, worldY=worldY, parent=parent, children=children, subdivide=subdivide, fat=fat)
+                                     orientY=orientY, worldX=worldX, worldY=worldY, parent=parent, children=children,
+                                     subdivide=subdivide, fat=fat)
 
     elif function == 'Child':
         block = block_class.ChildBlock(joint=joint, name=name, function=function, side=side, mirror=mirror,
                                        orientX=orientX,
-                                       orientY=orientY, worldX=worldX, worldY=worldY, parent=parent, children=children, subdivide=subdivide, fat=fat)
+                                       orientY=orientY, worldX=worldX, worldY=worldY, parent=parent, children=children,
+                                       subdivide=subdivide, fat=fat)
 
     elif function == 'Hand':
+        segScaleComp = mc.getAttr(block_joint + '.segScaleComp')
         fingerShape = SHAPE_LIST[mc.getAttr(block_joint + '.fingerShape')]
         block = block_class.HandBlock(joint=joint, name=name, function=function, side=side, mirror=mirror,
-                                       orientX=orientX,
-                                       orientY=orientY, worldX=worldX, worldY=worldY, parent=parent, children=children, fingerShape=fingerShape, subdivide=subdivide, fat=fat)
+                                      orientX=orientX,
+                                      orientY=orientY, worldX=worldX, worldY=worldY, parent=parent, children=children,
+                                      fingerShape=fingerShape, subdivide=subdivide, fat=fat, segScaleComp=segScaleComp)
 
     elif function == 'Foot':
+        segScaleComp = mc.getAttr(block_joint + '.segScaleComp')
         block = block_class.FootBlock(joint=joint, name=name, function=function, side=side, mirror=mirror,
-                                       orientX=orientX,
-                                       orientY=orientY, worldX=worldX, worldY=worldY, parent=parent, children=children, subdivide=subdivide, fat=fat)
+                                      orientX=orientX,
+                                      orientY=orientY, worldX=worldX, worldY=worldY, parent=parent, children=children,
+                                      subdivide=subdivide, fat=fat, segScaleComp=segScaleComp)
 
     return block
 
@@ -620,3 +658,18 @@ def lockAttrs(obj, trans, rot, scale, vis):
     mc.setAttr(obj + '.sy', l=trans, k=not scale)
     mc.setAttr(obj + '.sz', l=trans, k=not scale)
     mc.setAttr(obj + '.visibility', l=vis, k=not vis)
+
+
+def objsExists(self, objs):
+    for obj in objs:
+        if not mc.objExists(obj):
+            return False
+    return True
+
+
+def align(obj, target, translate, rotate, jointOrient, rotateOrder):
+    mc.matchTransform(obj, target, position=translate, rotation=rotate)
+    if rotateOrder:
+        mc.setAttr(obj + '.rotateOrder', mc.getAttr(target + '.rotateOrder'))
+    if jointOrient:
+        mc.setAttr(obj + '.jointOrient', mc.getAttr(target + '.jointOrient'))

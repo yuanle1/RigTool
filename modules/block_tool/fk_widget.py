@@ -176,6 +176,23 @@ class FKBlock(QWidget):
         self.secControl_layout.addStretch()
         self.addLine()
 
+        ## SegScaleComp
+        self.segScaleComp_layout = QHBoxLayout()
+        self.segScaleComp_layout.setContentsMargins(8, 0, 0, 0)
+        self.main_layout.addLayout(self.segScaleComp_layout)
+
+        self.segScaleComp_label = flatten_widget.MPointLabel(self)
+        self.segScaleComp_label.setFont(font)
+        self.segScaleComp_label.setText('Seg Scale Comp')
+        self.segScaleComp_label.setFixedWidth(140)
+        self.segScaleComp_layout.addWidget(self.segScaleComp_label)
+
+        self.segScaleComp_check = switch_button.MSwitch()
+        self.segScaleComp_check.setChecked(False)
+        self.segScaleComp_layout.addWidget(self.segScaleComp_check)
+        self.segScaleComp_layout.addStretch()
+        self.addLine()
+
         ## FKShape
         self.fkShape_layout = QHBoxLayout()
         self.fkShape_layout.setContentsMargins(8, 0, 0, 0)
@@ -233,6 +250,7 @@ class FKBlock(QWidget):
         self.subdivide_spin.valueChanged.connect(self.block.setSubdivide)
         self.fat_spin.valueChanged.connect(self.block.setFat)
         self.secControl_check.toggled.connect(self.block.setSecondControl)
+        self.segScaleComp_check.toggled.connect(self.block.setSegScaleComp)
         self.fkShape_combo.currentIndexChanged.connect(self.block.setFKShape)
         self.secShape_combo.currentIndexChanged.connect(self.block.setSecShape)
 
@@ -256,6 +274,8 @@ class FKBlock(QWidget):
         self.fat_spin.setValue(fat)
         sec_control = mc.getAttr(block_joint + '.secControl')
         self.secControl_check.setChecked(sec_control)
+        segScaleComp = mc.getAttr(block_joint + '.segScaleComp')
+        self.segScaleComp_check.setChecked(segScaleComp)
         fk_shape = mc.getAttr(block_joint + '.fkShape')
         self.fkShape_combo.setCurrentIndex(fk_shape)
         sec_shape = mc.getAttr(block_joint + '.secShape')

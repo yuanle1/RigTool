@@ -172,7 +172,6 @@ class BlockOutliner(QWidget):
         self.block_tree.setIndentation(15)
         self.main_layout.addWidget(self.block_tree)
         self.refreshOutliner()
-
         self.block_info_widget = block_info.BlockInfo()
         self.main_layout.addWidget(self.block_info_widget)
 

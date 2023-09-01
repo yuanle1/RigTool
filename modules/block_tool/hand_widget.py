@@ -122,6 +122,23 @@ class HandBlock(QWidget):
         self.fat_layout.addWidget(self.fat_spin)
         self.addLine()
 
+        ## SegScaleComp
+        self.segScaleComp_layout = QHBoxLayout()
+        self.segScaleComp_layout.setContentsMargins(8, 0, 0, 0)
+        self.main_layout.addLayout(self.segScaleComp_layout)
+
+        self.segScaleComp_label = flatten_widget.MPointLabel(self)
+        self.segScaleComp_label.setFont(font)
+        self.segScaleComp_label.setText('Seg Scale Comp')
+        self.segScaleComp_label.setFixedWidth(140)
+        self.segScaleComp_layout.addWidget(self.segScaleComp_label)
+
+        self.segScaleComp_check = switch_button.MSwitch()
+        self.segScaleComp_check.setChecked(False)
+        self.segScaleComp_layout.addWidget(self.segScaleComp_check)
+        self.segScaleComp_layout.addStretch()
+        self.addLine()
+
         ## FingerShape
         self.fingerShape_layout = QHBoxLayout()
         self.fingerShape_layout.setContentsMargins(8, 0, 0, 0)
@@ -160,6 +177,7 @@ class HandBlock(QWidget):
         self.world_y_y_spin.valueChanged.connect(lambda: self.block.setWorldY([self.world_y_x_spin.value(), self.world_y_y_spin.value(), self.world_y_z_spin.value()]))
         self.world_y_z_spin.valueChanged.connect(lambda: self.block.setWorldY([self.world_y_x_spin.value(), self.world_y_y_spin.value(), self.world_y_z_spin.value()]))
         self.fat_spin.valueChanged.connect(self.block.setFat)
+        self.segScaleComp_check.toggled.connect(self.block.setSegScaleComp)
         self.fingerShape_combo.currentIndexChanged.connect(self.block.setFKShape)
 
     def updateWidget(self):
@@ -176,5 +194,7 @@ class HandBlock(QWidget):
         self.world_y_z_spin.setValue(world_y[2])
         fat = mc.getAttr(block_joint + '.fat')
         self.fat_spin.setValue(fat)
+        segScaleComp = mc.getAttr(block_joint + '.segScaleComp')
+        self.segScaleComp_check.setChecked(segScaleComp)
         finger_shape = mc.getAttr(block_joint + '.fingerShape')
         self.fingerShape_combo.setCurrentIndex(finger_shape)

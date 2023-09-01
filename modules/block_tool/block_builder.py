@@ -7,13 +7,14 @@ from PySide2.QtGui import *
 import maya.cmds as mc
 
 import modules.maya_utilities as maya_utilities
-import block_utilities
+from block_utilities import *
 import block_class
 
 import maya_widgets.flatten_widget as flatten_widget
 import maya_widgets.switch_button as switch_button
 
 import copy
+
 
 class BlockBuilder(QWidget):
     def __init__(self, parent=None):
@@ -353,16 +354,17 @@ class BlockBuilder(QWidget):
             return
 
 
-        block_utilities.ensureAllBlockInfo(blocks)
-        scale = block_utilities.getBlockScale()
+        ensureAllBlockInfo(blocks)
+        scale = getBlockScale()
+
 
         # 检查
         if not mc.file(maya_utilities.CURVE_FILE, q=True, ex=True):
             mc.error("File not found:" + maya_utilities.CURVE_FILE)
         # 确认属性
-        block_utilities.ensureAllBlockAttrs()
+        ensureAllBlockAttrs()
         # 轴向
-        block_utilities.updateBlockOrient(blocks)
+        updateBlockOrient(blocks)
 
         mc.file(maya_utilities.CURVE_FILE, i=True, ignoreVersion=True)
         mc.setAttr('curveGroup.v', 0)
@@ -378,7 +380,7 @@ class BlockBuilder(QWidget):
         # 2nd
         group_rig = mc.createNode('transform', n=mc.getAttr('Block.name') + '_Rig')
         mc.parent('Block', group_rig)
-        block_utilities.lockAttrs(group_rig, 1, 1, 1, 0)
+        lockAttrs(group_rig, 1, 1, 1, 0)
         # 3rd
         mc.createNode('transform', n='Motion_System', p=group_rig)
         mc.createNode('transform', n='Deformation_System', p=group_rig)
@@ -390,6 +392,16 @@ class BlockBuilder(QWidget):
         # 4th
         mc.createNode('transform', n='Main_System', p='Motion_System')
         mc.createNode('transform', n='Root_System', p='Motion_System')
+        mc.createNode('transform', n='FK_System', p='Motion_System')
+        mc.createNode('transform', n='IK_System', p='Motion_System')
+
+        # 5th
+        mc.createNode('transform', n='IK_Joints', p='IK_System')
+        mc.createNode('transform', n='IK_Control', p='IK_System')
+        mc.createNode('transform', n='IK_Follow', p='IK_System')
+        mc.createNode('transform', n='IK_Static', p='IK_System')
+        mc.createNode('transform', n='IK_Curve ', p='IK_System')
+
 
         # 创建main控制器
         main_count = mc.getAttr('Block.mainCount')
@@ -400,7 +412,7 @@ class BlockBuilder(QWidget):
                 mc.parent(main_ctrl, 'Main_System')
             else:
                 main_part_ctrl = self.createController('Main', 'MainShape', '{0}{1}'.format(main_name, i), None,
-                                      scale * 1 + 0.2 * i, deform_joint=None)
+                                                       scale * 1 + 0.2 * i, deform_joint=None)
                 mc.parent(main_part_ctrl, 'Main_System')
 
         for i in range(1, main_count - 1, 1):
@@ -410,6 +422,8 @@ class BlockBuilder(QWidget):
 
         mc.addAttr(main_ctrl, ln='jointVis', k=1, at='bool', dv=1)
         mc.setAttr(main_ctrl + '.jointVis', k=False, cb=True)
+        mc.addAttr(main_ctrl, ln='fingerVis', k=1, at='bool', dv=1)
+        mc.setAttr(main_ctrl + '.fingerVis', k=False, cb=True)
 
         # 生成Deform
         for b in [1, -1]:
@@ -514,6 +528,9 @@ class BlockBuilder(QWidget):
         root_ctrl = self.createController('Root', 'RootShape', 'Root', 'M', scale, deform_joint=root_joint)
         root_pos = root_ctrl.replace('_Ctrl', '_Pos')
         mc.parent(root_pos, 'Root_System')
+        # 5th
+        mc.createNode('transform', n='Root_FK_Follow_Grp', p='FK_System')
+        mc.parentConstraint(root_ctrl, 'Root_FK_Follow_Grp')
         mc.refresh()
         # create FK
         for deform in deforms:
@@ -524,9 +541,141 @@ class BlockBuilder(QWidget):
             side = deform.getSide()
             fat = deform.getFat()
             fk_shape = deform.getFKShape()
-            fk_ctrl = self.createController('FK',  fk_shape + 'Shape', name, side, scale * fat, deform_joint)
+            fk_joint = deform.getFKJoint()
+            fk_ctrl = self.createController('FK', fk_shape + 'Shape', name, side, scale * fat, deform_joint)
+            mc.select(fk_ctrl)
+            mc.joint(n=fk_joint)
+            # fk_joint的scale保持不变
+            mc.connectAttr(fk_ctrl + '.scale', fk_joint + '.inverseScale')
+            mc.setAttr(fk_joint + '.rotateOrder', mc.getAttr(deform_joint + '.rotateOrder'))
 
+        # parent FK
+        for deform in deforms:
+            fk_ctrl = deform.getFKCtrl()
+            if not mc.objExists(fk_ctrl):
+                continue
 
+            fk_pos = fk_ctrl.replace('_Ctrl', '_Pos')
+            parent_side = deform.getParentSide()
+            block_parent_joint = deform.getParent()
+            fk_parent_ctrl = deform.getFKParentCtrl()
+            fk_parent_joint = fk_parent_ctrl.replace('_Ctrl', '_Jnt')
+            if not deform.getParent():
+                mc.parent(fk_pos, 'Root_FK_Follow_Grp')
+            elif deform.getIKSolver() != deform.block.getParentBlock().getIKSolver():
+                # Toes应该算在虽然不是IKRPSolver，当也应该放进腿部IK中
+                if deform.getIKToeJoint() != deform.getJoint():
+                    fk_grp = parent_side + '_' + block_parent_joint + '_FK_Grp'
+                    if not mc.objExists(fk_grp):
+                        mc.createNode('transform', n=fk_grp, p='FK_System')
+                        deform.setFKGrp(fk_grp)
+                        align(fk_grp, deform.getDeformParentJoint(), 1, 0, 0, 0)
+                        mc.pointConstraint(deform.getDeformParentJoint(), fk_grp)
+                        mc.orientConstraint(deform.getDeformParentJoint(), fk_grp)
+                    mc.parent(fk_pos, fk_grp)
+                    if deform.getParentFunction() == 'Wrist':
+                        mc.connectAttr('Main..fingerVis', fk_grp + '.v')
+                else:
+                    mc.parent(fk_pos, fk_parent_joint)
+
+            else:
+                if mc.objExists(fk_parent_joint):
+                    mc.parent(fk_pos, fk_parent_joint)
+
+        # segmentScaleCompensate FK
+        # 使FK控制器连达到骨骼segmentScaleCompensate的效果
+        # 常规情况下一个FK的层级链，FK1进行缩放，FK2、FK3由于是子物体也会缩放，
+        # 在当前骨骼位置上放一个PS2，父骨骼位置放一个PS1，PS2是PS1子物体，
+        # 用父骨骼scale约束PS1，并且开启ssc，此时缩放父控制器来缩放父骨骼，从而实现PS1的缩放，PS2因缩放产生位移
+        # 用PS2point约束当前骨骼的组，实现ssc效果
+        for deform in deforms:
+            fk_ctrl = deform.getFKCtrl()
+            if not mc.objExists(fk_ctrl):
+                continue
+            ssc = deform.getSSC()
+            side = deform.getSide()
+            block_joint = deform.getJoint()
+            deform_joint = deform.getDeformJoint()
+            deform_parent_joint = deform.getDeformParentJoint()
+            fk_ctrl = deform.getFKCtrl()
+            fk_parent_joint = deform.getFKParentJoint()
+            fk_joint = deform.getFKJoint()
+            fk_pos = fk_ctrl.replace('_Ctrl', '_Pos')
+            if ssc:
+                if deform.getParent() and deform.getIKSolver() == deform.block.getParentBlock().getIKSolver() and deform.getFunction() != 'End':
+                    fk_ps1 = mc.createNode('transform', n=side + '_' + block_joint + '_PS1_Grp', p=fk_parent_joint)
+                    fk_ps2 = mc.createNode('transform', n=side + '_' + block_joint + '_PS2_Grp', p=fk_joint)
+                    mc.parent(fk_ps2, fk_ps1)
+                    mc.scaleConstraint(fk_parent_joint, fk_ps1)
+                    mc.pointConstraint(fk_ps2, fk_pos, mo=True)
+            else:
+
+                mc.setAttr(deform_joint + '.segmentScaleCompensate', 0)
+                if mc.objExists(fk_joint):
+                    mc.setAttr(fk_parent_joint + '.segmentScaleCompensate', 0)
+                fk_grp = deform.getFKGrp()
+                if fk_grp:
+                    if not mc.isConnected(deform_parent_joint + '.s', fk_grp + '.s'):
+                        mc.connectAttr(deform_parent_joint + '.s', fk_grp + '.s')
+
+        # Create IK
+        for deform in deforms:
+            if deform.getIKSolver() != 'IKRPSolver':
+                continue
+            function = deform.getFunction()
+            block_joint = deform.getJoint()
+            deform_joint = deform.getDeformJoint()
+            deform_parent_joint = deform.getDeformParentJoint()
+            ik_joint = deform.getIKJoint()
+            ik_grp = deform.getIKGrp()
+            mc.select(clear=True)
+            mc.joint(n=ik_joint)
+            mc.setAttr(ik_joint + '.rotateOrder', mc.getAttr(block_joint + '.rotateOrder'))
+            if function == 'IK':
+                # IKStart
+                mc.createNode('transform', n=ik_grp)
+                mc.setAttr(ik_grp + '.rotateOrder', mc.getAttr(block_joint + '.rotateOrder'))
+                mc.parent(ik_joint, ik_grp)
+                if mc.objExists(deform_parent_joint):
+                    mc.parentConstraint(deform_parent_joint, ik_grp)
+                else:
+                    align(ik_grp, deform_parent_joint)
+            align(ik_joint, deform_joint, 1, 1, 0, 0)
+            mc.makeIdentity(ik_joint, apply=True, r=True)
+
+        # Parent IK
+        for deform in deforms:
+            if deform.getIKSolver() != 'IKRPSolver':
+                continue
+            function = deform.getFunction()
+            block_joint = deform.getJoint()
+            deform_joint = deform.getDeformJoint()
+            deform_parent_joint = deform.getDeformParentJoint()
+            ik_joint = deform.getIKJoint()
+            ik_parent_joint = deform.getIKParentJoint()
+            ik_grp = deform.getIKGrp()
+            if function == 'IK':
+                mc.parent(ik_grp, 'IK_Joints')
+            else:
+                mc.parent(ik_joint, ik_parent_joint)
+
+        # Constraint to FK
+        for deform in deforms:
+            fk_joint = deform.getFKJoint()
+            ik_joint = deform.getIKJoint()
+            deform_joint = deform.getDeformJoint()
+            if mc.objExists(fk_joint) and mc.objExists(ik_joint):
+                mc.pointConstraint(fk_joint, deform_joint)
+                mc.orientConstraint(fk_joint, deform_joint)
+                mc.pointConstraint(ik_joint, deform_joint, weight=0)
+                mc.orientConstraint(ik_joint, deform_joint, weight=0)
+            elif mc.objExists(fk_joint):
+                mc.pointConstraint(fk_joint, deform_joint)
+                mc.orientConstraint(fk_joint, deform_joint)
+
+        # Root_Ctrl控制器Root
+        if not mc.objExists(deforms[0].getFKJoint()):
+            mc.parentConstraint(root_ctrl, deforms[0].getDeformJoint(), mo=True)
 
     def createController(self, function, shape, name, side, scale, deform_joint=None):
         mc.select(cl=True)
@@ -538,7 +687,7 @@ class BlockBuilder(QWidget):
             mc.xform(ctrl, ws=True, t=[0, 0, 0])
         else:
             if function == 'Root':
-                ctrl = side + '_' + name + '_Ctrl'
+                ctrl = name + '_Ctrl'
                 mc.duplicate(shape, n=ctrl)
                 mc.scale(scale * 3, scale * 3, scale * 3, ctrl, r=True)
                 mc.matchTransform(ctrl, deform_joint, position=True)
@@ -554,10 +703,11 @@ class BlockBuilder(QWidget):
             offset = mc.createNode('transform', n=ctrl.replace('_Ctrl', '_Offset'), p=connect)
             mc.matchTransform(pos, ctrl, position=True, rotation=True)
             mc.parent(ctrl, offset)
-            output = mc.createNode('transform', n=ctrl.replace('_Ctrl', '_Output'))
-            mc.matchTransform(output, ctrl, position=True, rotation=True)
-            mc.parent(output, ctrl)
+            # output = mc.createNode('transform', n=ctrl.replace('_Ctrl', '_Output'))
+            # mc.matchTransform(output, ctrl, position=True, rotation=True)
+            # mc.parent(output, ctrl)
         return ctrl
+
 
 class DisplayCheck(QPushButton):
     def __init__(self, parent=None):
@@ -641,4 +791,3 @@ class FlattenBuildButton(QPushButton):
         self.setIcon(
             maya_utilities.getIcon('D:/Project/RigTools/Resources/icons/build/{}.svg'.format(self.icon), 22, 22))
         self.setIconSize(QSize(22, 22))
-

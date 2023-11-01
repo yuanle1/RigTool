@@ -112,15 +112,14 @@ class SplineBlock(QWidget):
         self.name_layout.addWidget(self.name_label)
 
         self.name_lineEdit = flatten_widget.MLineEdit()
+        self.name_lineEdit.setPlaceholderText('Default')
         self.name_lineEdit.setFont(font)
-        self.name_lineEdit.setText('Default')
         self.name_lineEdit.setStyleSheet('''
-                                                    color:rgb(120, 120, 120);
-                                                    border:none;
-                                                    background-color:transparent;
-                                                    border-bottom: 1px solid rgb(120, 120, 120);
-                                                    padding-bottom: 0px;
-                                                ''')
+                                                                    border:none;
+                                                                    background-color:transparent;
+                                                                    border-bottom: 1px solid rgb(120, 120, 120);
+                                                                    padding-bottom: 0px;
+                                                                ''')
         self.name_layout.addWidget(self.name_lineEdit)
         self.addLine()
 
@@ -206,7 +205,10 @@ class SplineBlock(QWidget):
         self.secShape_layout.addWidget(self.secShape_combo)
         self.addLine()
 
+
+
         self.updateWidget()
+        self.main_layout.addStretch()
 
     def addLine(self):
         line = QFrame()
@@ -227,6 +229,7 @@ class SplineBlock(QWidget):
         self.world_y_x_spin.valueChanged.connect(lambda: self.block.setWorldY([self.world_y_x_spin.value(), self.world_y_y_spin.value(), self.world_y_z_spin.value()]))
         self.world_y_y_spin.valueChanged.connect(lambda: self.block.setWorldY([self.world_y_x_spin.value(), self.world_y_y_spin.value(), self.world_y_z_spin.value()]))
         self.world_y_z_spin.valueChanged.connect(lambda: self.block.setWorldY([self.world_y_x_spin.value(), self.world_y_y_spin.value(), self.world_y_z_spin.value()]))
+        self.name_lineEdit.textChanged.connect(self.block.setName)
         self.subdivide_spin.valueChanged.connect(self.block.setSubdivide)
         self.fat_spin.valueChanged.connect(self.block.setFat)
         self.secControl_check.toggled.connect(self.block.setSecondControl)

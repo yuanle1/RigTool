@@ -142,6 +142,7 @@ class NameAdd(round_widget.MRoundWidget):
         with maya_utilities.Undoable():
             prefix_text = self.prefix_lineEdit.text()
             subfix_text = self.subfix_lineEdit.text()
+            ori_list = mc.ls(sl=True, uuid=True)
             sel_list = []
             if self.selected_check.isChecked():
                 sel_list = mc.ls(sl=True, transforms=True)
@@ -161,5 +162,7 @@ class NameAdd(round_widget.MRoundWidget):
                 mc.rename(prefix_text + short_name + subfix_text)
             mc.select(clear=True)
 
-            for uuid in uuid_list:
+            # for uuid in uuid_list:
+            #     mc.select(mc.ls(uuid)[0], add=True)
+            for uuid in ori_list:
                 mc.select(mc.ls(uuid)[0], add=True)

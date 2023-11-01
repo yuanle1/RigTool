@@ -23,7 +23,7 @@ class IsolateViews:
         self.resetAutoKey = mc.autoKeyframe(q=True, state=True)
 
     def __exit__(self, *args):
-        mc.autoKeyframe(state=self)
+        mc.autoKeyframe(state=self.resetAutoKey)
         if mc.ogs(q=True, pause=True):
             mc.ogs(pause=True)
 
@@ -66,7 +66,7 @@ def expoxtData(file, data):
     try:
         with open(file, 'w') as f:
             json.dump(data, f)
-    except Exception as D:
+    except Exception as e:
         print e
 
 font_db = QFontDatabase()

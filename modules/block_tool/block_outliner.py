@@ -16,9 +16,9 @@ import block_info
 reload(block_info)
 
 ICON_DIC = {'Spline': 'Spline.svg', 'IK': 'IK.svg', 'FK': 'FK.svg', 'End': 'End.png', 'Child': 'Child.svg',
-            'None': 'None.svg', 'Hand': 'Hand.svg', 'Foot': 'Foot.svg'}
+            'None': 'None.svg', 'Hand': 'Hand.svg', 'Foot': 'Foot.svg', 'Aim': 'Aim.svg'}
 SIZE_DIC = {'Spline': [12, 12], 'IK': [12, 12], 'FK': [12, 12], 'End': [12, 12], 'Child': [12, 12],
-            'None': [12, 12], 'Hand': [14, 14], 'Foot': [16, 16]}
+            'None': [12, 12], 'Hand': [14, 14], 'Foot': [16, 16], 'Aim' :[12, 12]}
 
 class BlockOutliner(QWidget):
     currentItemChanged = Signal()
@@ -91,13 +91,7 @@ class BlockOutliner(QWidget):
         self.reverse_order_button.setIconSize(QSize(20, 20))
         self.search_layout.addWidget(self.reverse_order_button)
 
-        # self.line = QFrame()
-        # self.line.setFrameShape(QFrame.HLine)
-        # self.line.setStyleSheet('''
-        #                             background-color:rgb(60, 60, 60);
-        #                         ''')
-        # self.line.setFixedHeight(1)
-        # self.main_layout.addWidget(self.line)
+
 
         self.block_tree = QTreeWidget(self)
         font.setPointSize(9)
@@ -173,10 +167,12 @@ class BlockOutliner(QWidget):
         self.main_layout.addWidget(self.block_tree)
         self.refreshOutliner()
         self.block_info_widget = block_info.BlockInfo()
+        self.block_info_widget.updateInfo(self.blocks)
         self.main_layout.addWidget(self.block_info_widget)
 
     def connect(self):
         self.search_lineEdit.textChanged.connect(self.search)
+
 
     def showParent(self, item):
         if item:
@@ -201,15 +197,19 @@ class BlockOutliner(QWidget):
                 self.search(search_text, self.block_tree.topLevelItem(i))
 
     def refreshOutliner(self):
-        block_utilities.ensureAllBlockAttrs()
+        self.blocks = []
+
+        self.block_tree.clear()
         if not mc.objExists('Block'):
             return
+        block_utilities.ensureAllBlockAttrs()
         mc.select('Block', hi=True)
         block_joints = mc.ls(sl=True, type='joint')
 
         item_dic = {}
         for block_joint in block_joints:
             block = block_utilities.blockInstance(block_joint)
+
             parent = mc.listRelatives(block_joint, p=True, type='joint') or [None]
             parent = parent[0]
             block_item = QTreeWidgetItem()
@@ -237,10 +237,18 @@ class BlockOutliner(QWidget):
 
             item_dic[block_joint] = block_item
 
+
+
         block_utilities.ensureAllBlockInfo(self.getAllBlocks())
         self.block_tree.expandAll()
         mc.select(clear=True)
 
+    def refreshBlockItem(self, item, function):
+        icon = ICON_DIC[function]
+        icon_size = SIZE_DIC[function]
+        icon = maya_utilities.getIcon('D:\\Project\\RigTools\\Resources\\icons\\blocks\\{}'.format(icon), icon_size[0],
+                                      icon_size[1])
+        item.setIcon(0, icon)
 
     def getCurrentBlock(self):
         if self.block_tree.currentItem():
@@ -251,4 +259,3 @@ class BlockOutliner(QWidget):
 
     def getAllBlocks(self):
         return self.blocks
-

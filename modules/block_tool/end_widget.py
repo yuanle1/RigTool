@@ -117,6 +117,8 @@ class EndBlock(QWidget):
         self.addLine()
 
         self.updateWidget()
+
+        self.main_layout.addStretch()
     def addLine(self):
         line = QFrame()
         line.setFrameShape(QFrame.HLine)

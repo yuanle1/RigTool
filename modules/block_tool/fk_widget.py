@@ -9,10 +9,13 @@ import maya.cmds as mc
 import modules.maya_utilities as maya_utilities
 import maya_widgets.switch_button as switch_button
 import maya_widgets.flatten_widget as flatten_widget
+
 reload(flatten_widget)
 
-SHAPE_LIST = ['FK', 'IK', 'Spline', 'Finger', 'Root', 'Main']
-SEC_LIST = ['FKSec', 'IKSec', 'SplineSec']
+SHAPE_LIST = ['FK', 'IK', 'Spline', 'Finger', 'Root', 'Main', 'Head', 'Scapula', 'Sec', 'Aim', 'Bendy', 'Start',
+              'Switch', 'Spline', 'SplineSec', 'Cv', 'Roll', 'Pivot', 'Pole', 'Gravity', 'Seed', 'Cross']
+SEC_LIST = ['FK', 'IK', 'Spline', 'Finger', 'Root', 'Main', 'Head', 'Scapula', 'Sec', 'Aim', 'Bendy', 'Start',
+              'Switch', 'Spline', 'SplineSec', 'Cv', 'Roll', 'Pivot', 'Pole', 'Gravity', 'Seed', 'Cross']
 SIDE_LIST = ['M', 'L', 'R']
 
 
@@ -67,7 +70,6 @@ class FKBlock(QWidget):
         self.world_x_layout.addWidget(self.world_x_z_spin)
         self.addLine()
 
-
         ## OrientY
         self.orient_y_layout = QHBoxLayout()
         self.orient_y_layout.setContentsMargins(8, 0, 0, 0)
@@ -116,15 +118,14 @@ class FKBlock(QWidget):
         self.name_layout.addWidget(self.name_label)
 
         self.name_lineEdit = flatten_widget.MLineEdit()
+        self.name_lineEdit.setPlaceholderText('Default')
         self.name_lineEdit.setFont(font)
-        self.name_lineEdit.setText('Default')
         self.name_lineEdit.setStyleSheet('''
-                                                            color:rgb(120, 120, 120);
-                                                            border:none;
-                                                            background-color:transparent;
-                                                            border-bottom: 1px solid rgb(120, 120, 120);
-                                                            padding-bottom: 0px;
-                                                        ''')
+                                                                    border:none;
+                                                                    background-color:transparent;
+                                                                    border-bottom: 1px solid rgb(120, 120, 120);
+                                                                    padding-bottom: 0px;
+                                                                ''')
         self.name_layout.addWidget(self.name_lineEdit)
         self.addLine()
 
@@ -228,6 +229,9 @@ class FKBlock(QWidget):
         self.addLine()
 
         self.updateWidget()
+
+        self.main_layout.addStretch()
+
     def addLine(self):
         line = QFrame()
         line.setFrameShape(QFrame.HLine)
@@ -239,14 +243,23 @@ class FKBlock(QWidget):
 
     def connect(self):
         orient_list = ['Common', 'Parent', 'Free', 'World']
-        self.orient_x_combo.currentIndexChanged.connect(lambda: self.block.setOrientX(orient_list[self.orient_x_combo.currentIndex()]))
-        self.world_x_x_spin.valueChanged.connect(lambda: self.block.setWorldX([self.world_x_x_spin.value(), self.world_x_y_spin.value(), self.world_x_z_spin.value()]))
-        self.world_x_y_spin.valueChanged.connect(lambda: self.block.setWorldX([self.world_x_x_spin.value(), self.world_x_y_spin.value(), self.world_x_z_spin.value()]))
-        self.world_x_z_spin.valueChanged.connect(lambda: self.block.setWorldX([self.world_x_x_spin.value(), self.world_x_y_spin.value(), self.world_x_z_spin.value()]))
-        self.orient_y_combo.currentIndexChanged.connect(lambda: self.block.setOrientY(orient_list[self.orient_y_combo.currentIndex()]))
-        self.world_y_x_spin.valueChanged.connect(lambda: self.block.setWorldY([self.world_y_x_spin.value(), self.world_y_y_spin.value(), self.world_y_z_spin.value()]))
-        self.world_y_y_spin.valueChanged.connect(lambda: self.block.setWorldY([self.world_y_x_spin.value(), self.world_y_y_spin.value(), self.world_y_z_spin.value()]))
-        self.world_y_z_spin.valueChanged.connect(lambda: self.block.setWorldY([self.world_y_x_spin.value(), self.world_y_y_spin.value(), self.world_y_z_spin.value()]))
+        self.orient_x_combo.currentIndexChanged.connect(
+            lambda: self.block.setOrientX(orient_list[self.orient_x_combo.currentIndex()]))
+        self.world_x_x_spin.valueChanged.connect(lambda: self.block.setWorldX(
+            [self.world_x_x_spin.value(), self.world_x_y_spin.value(), self.world_x_z_spin.value()]))
+        self.world_x_y_spin.valueChanged.connect(lambda: self.block.setWorldX(
+            [self.world_x_x_spin.value(), self.world_x_y_spin.value(), self.world_x_z_spin.value()]))
+        self.world_x_z_spin.valueChanged.connect(lambda: self.block.setWorldX(
+            [self.world_x_x_spin.value(), self.world_x_y_spin.value(), self.world_x_z_spin.value()]))
+        self.orient_y_combo.currentIndexChanged.connect(
+            lambda: self.block.setOrientY(orient_list[self.orient_y_combo.currentIndex()]))
+        self.world_y_x_spin.valueChanged.connect(lambda: self.block.setWorldY(
+            [self.world_y_x_spin.value(), self.world_y_y_spin.value(), self.world_y_z_spin.value()]))
+        self.world_y_y_spin.valueChanged.connect(lambda: self.block.setWorldY(
+            [self.world_y_x_spin.value(), self.world_y_y_spin.value(), self.world_y_z_spin.value()]))
+        self.world_y_z_spin.valueChanged.connect(lambda: self.block.setWorldY(
+            [self.world_y_x_spin.value(), self.world_y_y_spin.value(), self.world_y_z_spin.value()]))
+        self.name_lineEdit.textChanged.connect(self.block.setName)
         self.subdivide_spin.valueChanged.connect(self.block.setSubdivide)
         self.fat_spin.valueChanged.connect(self.block.setFat)
         self.secControl_check.toggled.connect(self.block.setSecondControl)

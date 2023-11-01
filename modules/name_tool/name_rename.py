@@ -173,7 +173,7 @@ class NameRename(round_widget.MRoundWidget):
                                           {
                                               border: 2px solid rgb(159,167,163);
                                               border-radius: 0px;
-                                              color:rgbrgb(172,172,172);
+                                              color:rgb(172,172,172);
                                           }
                                           #main_menu:item
                                           {
@@ -244,6 +244,7 @@ class NameRename(round_widget.MRoundWidget):
 
     def rename(self):
         with maya_utilities.Undoable():
+            ori_list = mc.ls(sl=True, uuid=True)
             component_widgets = []
             for i in [name_component.NameText, name_component.NameNumber, name_component.NameLetter]:
                 component_widgets.extend(self.rename_frame.findChildren(i))
@@ -266,6 +267,7 @@ class NameRename(round_widget.MRoundWidget):
                         if ',' in component_widget.getText() or ';' in component_widget.getText():
                             first_base = component_widget
                             break
+
             if first_base:
                 for component_widget in component_widgets:
                     if component_widget == first_base:
@@ -292,6 +294,7 @@ class NameRename(round_widget.MRoundWidget):
                             if ',' in component_widget.getText() or ';' in component_widget.getText():
                                 third_base = component_widget
                                 break
+
             sel_list = mc.ls(sl=True, sn=False, transforms=True)
             if not sel_list:
                 return
@@ -360,12 +363,17 @@ class NameRename(round_widget.MRoundWidget):
                                 new_name += top_obj
                             else:
                                 text = component_widget.getText()
+                                separator = text.split(',')
+                                separator = [item.split(';') for item in separator]
+                                separator_list = []
+                                for item in separator:
+                                    separator_list.extend(item)
                                 if component_widget == first_base:
-                                    separator = text.split(',')
-                                    separator = [item.split(';') for item in separator]
-                                    separator_list = []
-                                    for item in separator:
-                                        separator_list.extend(item)
+                                    if i < len(separator_list):
+                                        new_name += separator_list[i]
+                                    else:
+                                        new_name += separator_list[-1]
+                                elif component_widget == second_base:
                                     if i < len(separator_list):
                                         new_name += separator_list[i]
                                     else:
@@ -454,9 +462,10 @@ class NameRename(round_widget.MRoundWidget):
                         top_obj = mc.rename(child, new_name)
 
             mc.select(clear=True)
-            for uuid in uuid_list:
+            # for uuid in uuid_list:
+            #     mc.select(mc.ls(uuid)[0], add=True)
+            for uuid in ori_list:
                 mc.select(mc.ls(uuid)[0], add=True)
-
 
 
 

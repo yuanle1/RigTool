@@ -213,7 +213,7 @@ class MColorCircle(QWidget):
         angle = hue - 180
         self.hue_picker.move(
             QPoint(round(self.center.x() - self.hue_motion_radius * math.cos(math.radians(angle))) - self.hue_picker_radius,
-                   round(self.center.y() - self.hue_motion_radius * math.sin(math.radians(angle))) - self.hue_picker_radius))
+                   round(self.center.y() + self.hue_motion_radius * math.sin(math.radians(angle))) - self.hue_picker_radius))
         self.update()
 
     def getHue(self):
@@ -305,7 +305,7 @@ class MHueSlider(QWidget):
         self.value = False
 
     def setHue(self, hue):
-        hue = hue / 360.0
+        hue = 1 - hue / 360.0
         self.handle.move(round(self.slider_rect.x() + self.slider_rect.width() * hue - self.handle.rect().width() / 2.0), 0)
 
     def getHue(self):

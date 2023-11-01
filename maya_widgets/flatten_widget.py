@@ -8,6 +8,7 @@ from modules import maya_utilities as maya_utilities
 class MFlattentButton(QPushButton):
     def __init__(self, parent=None, size=None):
         super(MFlattentButton, self).__init__(parent)
+        self.setCursor(Qt.PointingHandCursor)
         if size:
             self.setFixedSize(QSize(size, size))
             self.setObjectName('flatten_widget')
@@ -95,9 +96,9 @@ class MLineEdit(QLineEdit):
     def __init__(self, parent=None):
         super(MLineEdit, self).__init__(parent)
         self.setObjectName('MLineEdit')
-        # font = maya_utilities.font
-        # font.setPointSize(8)
-        # self.setFont(font)
+        font = maya_utilities.font
+        font.setPointSize(8)
+        self.setFont(font)
         self.setStyleSheet('''
                                border:2px solid;
                                background-color:transparent;
@@ -108,6 +109,8 @@ class MLineEdit(QLineEdit):
 
     def contextMenuEvent(self, event):
         pass
+
+
 class MComboBox(QComboBox):
     def __init__(self, width=None, image=None, parent=None, border=1, color=[67, 67, 67]):
         super(MComboBox, self).__init__(parent)

@@ -52,6 +52,7 @@ class NameText(QFrame):
                                         ''')
         self.title_layout.addWidget(self.title_label)
 
+        self.main_layout.addStretch()
 
         self.title_line = QFrame()
         self.title_line.setFrameShape(QFrame.HLine)
@@ -75,10 +76,9 @@ class NameText(QFrame):
 
         self.main_layout.addStretch()
 
-
         self.use_own_name_layout = QHBoxLayout()
         self.use_own_name_layout.setContentsMargins(16, 0, 0, 0)
-        self.main_layout.addLayout(self.use_own_name_layout)
+        # self.main_layout.addLayout(self.use_own_name_layout)
 
         self.use_own_name_label = QLabel()
         font.setPointSize(-1)
@@ -91,12 +91,12 @@ class NameText(QFrame):
 
 
         self.dash_layout = QHBoxLayout()
-        self.dash_layout.setContentsMargins(20, 0, 0, 0)
+        self.dash_layout.setContentsMargins(22, 5, 0, 0)
         self.main_layout.addLayout(self.dash_layout)
 
         self.dash_label = QLabel()
         font.setPointSize(-1)
-        # self.dash_label.setFont(font)
+        self.dash_label.setFont(font)
         self.dash_label.setText('"_" :')
         self.dash_layout.addWidget(self.dash_label)
 

@@ -144,6 +144,7 @@ class NameReplace(round_widget.MRoundWidget):
         with maya_utilities.Undoable():
             search_text = self.search_lineEdit.text()
             replace_text = self.replace_lineEdit.text()
+            ori_list = mc.ls(sl=True, uuid=True)
             sel_list = []
             if self.selected_check.isChecked():
                 sel_list = mc.ls(sl=True, sn=False, transforms=True)
@@ -164,5 +165,8 @@ class NameReplace(round_widget.MRoundWidget):
 
             mc.select(clear=True)
 
-            for uuid in uuid_list:
+            # for uuid in uuid_list:
+            #     mc.select(mc.ls(uuid)[0], add=True)
+            for uuid in ori_list:
                 mc.select(mc.ls(uuid)[0], add=True)
+

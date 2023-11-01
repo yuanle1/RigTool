@@ -44,17 +44,17 @@ class CurveScale(QWidget):
                     points = mc.ls(curve + '.cv[*]', flatten=True)
                     mc.select(points)
                     if factor > 0:
-                        factor = 1.1
+                        scale = 1.1
                     else:
-                        factor = 1 / 1.1
+                        scale = 1 / 1.1
                     if axis == 0:
-                        mc.scale(factor, 1, 1, r=True, os=True)
+                        mc.scale(scale, 1, 1, r=True, os=True)
                     elif axis == 1:
-                        mc.scale(1, factor, 1, r=True, os=True)
+                        mc.scale(1, scale, 1, r=True, os=True)
                     elif axis == 2:
-                        mc.scale(1, 1,  factor, r=True, os=True)
+                        mc.scale(1, 1,  scale, r=True, os=True)
                     elif axis == 3:
-                        mc.scale(factor, factor, factor, r=True, os=True)
+                        mc.scale(scale, scale, scale, r=True, os=True)
         mc.select(sel_list)
 
 

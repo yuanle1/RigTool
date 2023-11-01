@@ -44,6 +44,7 @@ class BlockInfo(QWidget):
         self.block_display_grid.addWidget(self.block_size_label, 0, 0)
 
         self.block_size_slider = QSlider()
+        self.block_size_slider.setMinimum(1)
         self.block_size_slider.setStyleSheet('''
                                                         QSlider:groove:horizontal
                                                         {
@@ -136,3 +137,27 @@ class BlockInfo(QWidget):
             blocks = mc.listRelatives('Block', ad=True, type='joint') or []
             for block in blocks:
                 mc.setAttr(block + '.displayLocalAxis', not self.block_axis_check.isChecked())
+
+
+    def updateInfo(self, blocks):
+        if not mc.objExists('Block'):
+            return
+        mc.select('Block', hi=True)
+        self.block_num_label.setText('   {}'.format(len(mc.ls(sl=True, type='joint'))))
+        joint_num = 0
+        effective_num = 0
+        for block in blocks:
+            joint_num += 1
+            joint_num += block.getSubdivide()
+            if block.getMirror():
+                joint_num += 1
+                joint_num += block.getSubdivide()
+            if block.getFunction() != 'End':
+                effective_num += 1
+                effective_num += block.getSubdivide()
+                if block.getMirror():
+                    effective_num += 1
+                    effective_num += block.getSubdivide()
+        self.joint_num_label.setText('   {}'.format(joint_num))
+        self.effective_num_label.setText('   {}'.format(effective_num))
+        mc.select(clear=True)

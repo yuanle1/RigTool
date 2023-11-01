@@ -11,6 +11,8 @@ import maya_widgets.switch_button as switch_button
 import maya_widgets.flatten_widget as flatten_widget
 reload(flatten_widget)
 
+SHAPE_LIST = ['FK', 'IK', 'Spline', 'Finger', 'Root', 'Main', 'Head', 'Scapula', 'Sec', 'Aim', 'Bendy', 'Start',
+              'Switch', 'Spline', 'SplineSec', 'Cv', 'Roll', 'Pivot', 'Pole', 'Gravity', 'Seed', 'Cross']
 
 class ChildBlock(QWidget):
     def __init__(self, parent=None, block=None):
@@ -134,7 +136,26 @@ class ChildBlock(QWidget):
         self.fat_layout.addWidget(self.fat_spin)
         self.addLine()
 
+        ## FKShape
+        self.fkShape_layout = QHBoxLayout()
+        self.fkShape_layout.setContentsMargins(8, 0, 0, 0)
+        self.main_layout.addLayout(self.fkShape_layout)
+
+        self.fkShape_label = flatten_widget.MPointLabel(self)
+        self.fkShape_label.setFont(font)
+        self.fkShape_label.setText('FK Shape')
+        self.fkShape_label.setFixedWidth(140)
+        self.fkShape_layout.addWidget(self.fkShape_label)
+
+        self.fkShape_combo = flatten_widget.MComboBox(color=[59, 59, 59], border=1)
+        self.fkShape_combo.setFont(font)
+        self.fkShape_combo.addItems(SHAPE_LIST)
+        self.fkShape_layout.addWidget(self.fkShape_combo)
+        self.addLine()
+
         self.updateWidget()
+
+        self.main_layout.addStretch()
     def addLine(self):
         line = QFrame()
         line.setFrameShape(QFrame.HLine)
@@ -156,6 +177,8 @@ class ChildBlock(QWidget):
         self.world_y_z_spin.valueChanged.connect(lambda: self.block.setWorldY([self.world_y_x_spin.value(), self.world_y_y_spin.value(), self.world_y_z_spin.value()]))
         self.subdivide_spin.valueChanged.connect(self.block.setSubdivide)
         self.fat_spin.valueChanged.connect(self.block.setFat)
+        self.fkShape_combo.currentIndexChanged.connect(self.block.setFKShape)
+
 
     def updateWidget(self):
         block_joint = self.block.getJoint()
@@ -173,3 +196,5 @@ class ChildBlock(QWidget):
         self.subdivide_spin.setValue(subdivide)
         fat = mc.getAttr(block_joint + '.fat')
         self.fat_spin.setValue(fat)
+        fk_shape = mc.getAttr(block_joint + '.fkShape')
+        self.fkShape_combo.setCurrentIndex(fk_shape)

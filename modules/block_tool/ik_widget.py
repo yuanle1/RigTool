@@ -10,7 +10,7 @@ import modules.maya_utilities as maya_utilities
 import maya_widgets.switch_button as switch_button
 import maya_widgets.flatten_widget as flatten_widget
 reload(flatten_widget)
-
+from modules.maya_utilities import ICONS_DIR
 
 
 
@@ -115,10 +115,9 @@ class IKBlock(QWidget):
         self.name_layout.addWidget(self.name_label)
 
         self.name_lineEdit = flatten_widget.MLineEdit()
+        self.name_lineEdit.setPlaceholderText('Default')
         self.name_lineEdit.setFont(font)
-        self.name_lineEdit.setText('Default')
         self.name_lineEdit.setStyleSheet('''
-                                                            color:rgb(120, 120, 120);
                                                             border:none;
                                                             background-color:transparent;
                                                             border-bottom: 1px solid rgb(120, 120, 120);
@@ -192,6 +191,50 @@ class IKBlock(QWidget):
         self.segScaleComp_layout.addStretch()
         self.addLine()
 
+        # Switch
+        self.switch_layout = QHBoxLayout()
+        self.switch_layout.setContentsMargins(8, 0, 0, 0)
+        self.main_layout.addLayout(self.switch_layout)
+
+        self.switch_label = flatten_widget.MPointLabel(self)
+        self.switch_label.setFont(font)
+        self.switch_label.setText('Switch Pivot')
+        self.switch_label.setFixedWidth(140)
+        self.switch_layout.addWidget(self.switch_label)
+
+        self.switch_lineEdit = flatten_widget.MLineEdit()
+        self.switch_lineEdit.setPlaceholderText('None')
+        self.switch_lineEdit.setFont(font)
+        self.switch_lineEdit.setObjectName('lineEdit')
+        self.switch_layout.addWidget(self.switch_lineEdit)
+        self.switch_lineEdit.setStyleSheet('''
+                                   #lineEdit_button
+                                   {
+                                       background-color:transparent;
+                                       color:none;
+                                       border: none;
+                                   }
+                                   #lineEdit
+                                   {
+                                       border:none;
+                                       background-color:transparent;
+                                       border-bottom: 1px solid rgb(120, 120, 120);
+                                       padding-bottom: 0px;
+                                   }
+                                   ''')
+
+        self.switch_pick_button = flatten_widget.MFlattentButton(size=18)
+        self.switch_pick_button.setObjectName('lineEdit_button')
+        self.switch_pick_button.setIcon(maya_utilities.getIcon(ICONS_DIR + 'pick.svg', 18, 18))
+        self.switch_pick_button.setIconSize(QSize(18, 18))
+
+        layout = QHBoxLayout()
+        self.switch_lineEdit.setLayout(layout)
+        layout.addStretch()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self.switch_pick_button)
+        self.addLine()
+
         ## IKShape
         self.ikShape_layout = QHBoxLayout()
         self.ikShape_layout.setContentsMargins(8, 0, 0, 0)
@@ -242,8 +285,11 @@ class IKBlock(QWidget):
         self.secShape_combo.addItems(['FKSec', 'IKSec', 'SplineSec', 'MainSec'])
         self.secShape_layout.addWidget(self.secShape_combo)
         self.addLine()
+        
 
+        
         self.updateWidget()
+        self.main_layout.addStretch()
     def addLine(self):
         line = QFrame()
         line.setFrameShape(QFrame.HLine)
@@ -263,6 +309,7 @@ class IKBlock(QWidget):
         self.world_y_x_spin.valueChanged.connect(lambda: self.block.setWorldY([self.world_y_x_spin.value(), self.world_y_y_spin.value(), self.world_y_z_spin.value()]))
         self.world_y_y_spin.valueChanged.connect(lambda: self.block.setWorldY([self.world_y_x_spin.value(), self.world_y_y_spin.value(), self.world_y_z_spin.value()]))
         self.world_y_z_spin.valueChanged.connect(lambda: self.block.setWorldY([self.world_y_x_spin.value(), self.world_y_y_spin.value(), self.world_y_z_spin.value()]))
+        self.name_lineEdit.textChanged.connect(self.block.setName)
         self.subdivide_spin.valueChanged.connect(self.block.setSubdivide)
         self.fat_spin.valueChanged.connect(self.block.setFat)
         self.secControl_check.toggled.connect(self.block.setSecondControl)
@@ -270,6 +317,16 @@ class IKBlock(QWidget):
         self.ikShape_combo.currentIndexChanged.connect(self.block.setIKShape)
         self.fkShape_combo.currentIndexChanged.connect(self.block.setFKShape)
         self.secShape_combo.currentIndexChanged.connect(self.block.setSecShape)
+
+        self.switch_lineEdit.textChanged.connect(self.block.setSwitchPivot)
+        self.switch_pick_button.clicked.connect(lambda: self.switch_lineEdit.setText(self.pickPivot()))
+
+    def pickPivot(self):
+        sel_list = mc.ls(sl=True)
+        if sel_list:
+            return sel_list[0]
+        else:
+            return ''
 
     def updateWidget(self):
         block_joint = self.block.getJoint()
@@ -299,3 +356,5 @@ class IKBlock(QWidget):
         self.fkShape_combo.setCurrentIndex(fk_shape)
         sec_shape = mc.getAttr(block_joint + '.secShape')
         self.secShape_combo.setCurrentIndex(sec_shape)
+        switch_pivot = mc.getAttr(block_joint + '.switchPivot')
+        self.switch_lineEdit.setText(switch_pivot)
